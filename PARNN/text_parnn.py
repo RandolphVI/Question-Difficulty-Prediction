@@ -106,22 +106,56 @@ def orthogonal_initializer():
     return _initializer
 
 
-class TextTARNN(object):
-    """A TARNN for text classification."""
+class TextPARNN(object):
+    """A PARNN for text classification."""
 
     def __init__(
-            self, sequence_length, vocab_size, lstm_hidden_size, fc_hidden_size, attention_type,
+            self, pair_size, sequence_length, vocab_size, lstm_hidden_size, fc_hidden_size, attention_type,
             embedding_size, embedding_type, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
-        self.input_x_content = tf.placeholder(tf.int32, [None, sequence_length[0]], name="input_x_content")
-        self.input_x_question = tf.placeholder(tf.int32, [None, sequence_length[1]], name="input_x_question")
-        self.input_x_option = tf.placeholder(tf.int32, [None, sequence_length[2]], name="input_x_option")
-        self.input_y = tf.placeholder(tf.float32, [None, 1], name="input_y")
+        self.input_x_content = tf.placeholder(tf.int32, [pair_size, None, sequence_length[0]], name="input_x_content")
+        self.input_x_question = tf.placeholder(tf.int32, [pair_size, None, sequence_length[1]], name="input_x_question")
+        self.input_x_option = tf.placeholder(tf.int32, [pair_size, None, sequence_length[2]], name="input_x_option")
+        self.input_y = tf.placeholder(tf.float32, [pair_size, None, 1], name="input_y")
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
+
+        def _embedding_layer(input_x_content, input_x_question, input_x_option, embedding_type, pretrained_embedding):
+            """
+            Embedding Layer.
+            Args:
+                input_x_content: [batch_size, sequence_length[0]]
+                input_x_question: [batch_size, sequence_length[1]]
+                input_x_option: [batch_size, sequence_length[2]]
+                embedding_type: The embedding type
+                pretrained_embedding: None or [vocab_size, embedding_size]
+
+            Returns:
+                embedded_sentence_content: [batch_size, sequence_length[0], embedding_size]
+                embedded_sentence_question: [batch_size, sequence_length[1], embedding_size]
+                embedded_sentence_option: [batch_size, sequence_length[2], embedding_size]
+            """
+            if pretrained_embedding is None:
+                embedding = tf.get_variable("embedding", shape=[vocab_size, embedding_size],
+                                            initializer=tf.random_uniform_initializer(minval=-1.0, maxval=1.0),
+                                            trainable=True)
+            else:
+                if embedding_type == 0:
+                    embedding = tf.constant(pretrained_embedding, dtype=tf.float32, name="embedding")
+                if embedding_type == 1:
+                    embedding = tf.get_variable("embedding", shape=[vocab_size, embedding_size],
+                                                initializer=tf.constant_initializer(pretrained_embedding),
+                                                trainable=True)
+
+            # [batch_size, sequence_length, embedding_size]
+            embedded_sentence_content = tf.nn.embedding_lookup(embedding, input_x_content)
+            embedded_sentence_question = tf.nn.embedding_lookup(embedding, input_x_question)
+            embedded_sentence_option = tf.nn.embedding_lookup(embedding, input_x_option)
+
+            return embedded_sentence_content, embedded_sentence_question, embedded_sentence_option
 
         def _bi_lstm_layer(input_x, name=""):
             # Bi-LSTM Layer
@@ -142,10 +176,10 @@ class TextTARNN(object):
 
             # Concat output
             # [batch_size, sequence_length, lstm_hidden_size * 2]
-            lstm_out = tf.concat(outputs, axis=2, name="lstm_out_" + name)
+            lstm_out = tf.concat(outputs, axis=2, name=name + "lstm_out")
 
             # [batch_size, lstm_hidden_size * 2]
-            lstm_avg = tf.reduce_mean(lstm_out, axis=1, name="lstm_avg_" + name)
+            lstm_avg = tf.reduce_mean(lstm_out, axis=1, name=name + "lstm_avg")
 
             return lstm_out, lstm_avg
 
@@ -163,14 +197,14 @@ class TextTARNN(object):
                 attention_out: [batch_size, lstm_hidden_size * 2]
             """
             if attention_type == 'normal':
-                with tf.name_scope(name + "attention"):
+                with tf.variable_scope(name + "attention"):
                     attention_matrix = tf.matmul(input_y, tf.transpose(input_x, perm=[0, 2, 1]))
                     attention_weight = tf.nn.softmax(attention_matrix, name="attention_matrix")
                     attention_visual = tf.reduce_mean(attention_matrix, axis=1, name="visual")
                     attention_out = tf.matmul(attention_weight, input_x)
                     attention_out = tf.reduce_mean(attention_out, axis=1)
             if attention_type == 'cosine':
-                with tf.name_scope(name + "cos_attention"):
+                with tf.variable_scope(name + "cos_attention"):
                     cos_matrix = []
                     seq_len = input_y.get_shape().as_list()[-2]
                     normalize_x = tf.nn.l2_normalize(input_x, 2)
@@ -184,14 +218,14 @@ class TextTARNN(object):
                     attention_out = tf.multiply(tf.expand_dims(attention_visual, axis=-1), input_x)
                     attention_out = tf.reduce_mean(attention_out, axis=1)
             if attention_type == 'mlp':
-                with tf.name_scope(name + "mlp_attention"):
+                with tf.variable_scope(name + "mlp_attention", reuse=tf.AUTO_REUSE):
                     x = tf.concat([input_x, input_y], axis=1)
                     num_units = x.get_shape().as_list()[-1]
-                    W = tf.Variable(tf.truncated_normal(shape=[num_units, num_units],
-                                                        stddev=0.1, dtype=tf.float32), name="W")
-                    b = tf.Variable(tf.constant(value=0.1, shape=[num_units], dtype=tf.float32), name="b")
-                    u = tf.Variable(tf.truncated_normal(shape=[num_units, 1],
-                                                        stddev=0.1, dtype=tf.float32), name="u")
+                    W = tf.get_variable("W", shape=[num_units, num_units],
+                                        initializer=tf.truncated_normal_initializer(stddev=0.1))
+                    b = tf.get_variable("b", shape=[num_units], initializer=tf.constant_initializer(value=0.1))
+                    u = tf.get_variable("u", shape=[num_units, 1],
+                                        initializer=tf.truncated_normal_initializer(stddev=0.1))
                     attention_matrix = tf.map_fn(
                         fn=lambda x: tf.matmul(x, u),
                         elems=tf.tanh(
@@ -217,11 +251,11 @@ class TextTARNN(object):
             Returns:
                 [batch_size, fc_hidden_size]
             """
-            with tf.name_scope(name + "fc"):
+            with tf.variable_scope(name + "fc", reuse=tf.AUTO_REUSE):
                 num_units = input_x.get_shape().as_list()[-1]
-                W = tf.Variable(tf.truncated_normal(shape=[num_units, fc_hidden_size],
-                                                    stddev=0.1, dtype=tf.float32), name="W")
-                b = tf.Variable(tf.constant(value=0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
+                W = tf.get_variable("W", shape=[num_units, fc_hidden_size],
+                                    initializer=tf.truncated_normal_initializer(stddev=0.1))
+                b = tf.get_variable("b", shape=[fc_hidden_size], initializer=tf.constant_initializer(value=0.1))
                 fc = tf.nn.xw_plus_b(input_x, W, b)
                 fc_out = tf.nn.relu(fc)
             return fc_out
@@ -270,57 +304,67 @@ class TextTARNN(object):
 
             return output
 
-        # Embedding Layer
-        with tf.device("/cpu:0"), tf.name_scope("embedding"):
-            # Use random generated the word vector by default
-            # Can also be obtained through our own word vectors trained by our corpus
-            if pretrained_embedding is None:
-                self.embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], minval=-1.0, maxval=1.0,
-                                                               dtype=tf.float32), trainable=True, name="embedding")
-            else:
-                if embedding_type == 0:
-                    self.embedding = tf.constant(pretrained_embedding, dtype=tf.float32, name="embedding")
-                if embedding_type == 1:
-                    self.embedding = tf.Variable(pretrained_embedding, trainable=True,
-                                                 dtype=tf.float32, name="embedding")
-            # [batch_size, sequence_length, embedding_size]
-            self.embedded_sentence_content = tf.nn.embedding_lookup(self.embedding, self.input_x_content)
-            self.embedded_sentence_question = tf.nn.embedding_lookup(self.embedding, self.input_x_question)
-            self.embedded_sentence_option = tf.nn.embedding_lookup(self.embedding, self.input_x_option)
+        def _sub_network(input_x_content, input_x_question, input_x_option, dropout_keep_prob, train_flag):
+            # Embedding Layer
+            with tf.variable_scope("embedding", reuse=tf.AUTO_REUSE):
+                embedded_sentence_content, embedded_sentence_question, embedded_sentence_option = \
+                    _embedding_layer(input_x_content, input_x_question, input_x_option,
+                                     embedding_type, pretrained_embedding)
 
-        self.lstm_out_content, self.lstm_avg_content = _bi_lstm_layer(self.embedded_sentence_content, name="content_")
-        self.lstm_out_question, self.lstm_avg_question = _bi_lstm_layer(self.embedded_sentence_question, name="question_")
-        self.lstm_out_option, self.lstm_avg_option = _bi_lstm_layer(self.embedded_sentence_option, name="option_")
+            # Bi-lstm Layer
+            lstm_out_content, lstm_avg_content = _bi_lstm_layer(embedded_sentence_content, name="content_")
+            lstm_out_question, lstm_avg_question = _bi_lstm_layer(embedded_sentence_question, name="question_")
+            lstm_out_option, lstm_avg_option = _bi_lstm_layer(embedded_sentence_option, name="option_")
 
-        # Attention Layer
-        self.visual_cq, self.attention_cq = _attention(self.lstm_out_content, self.lstm_out_question, name="cq_")
-        self.visual_oq, self.attention_oq = _attention(self.lstm_out_option, self.lstm_out_question, name="oq_")
+            # Attention Layer
+            visual_cq, attention_cq = _attention(lstm_out_content, lstm_out_question, name="cq_")
+            visual_oq, attention_oq = _attention(lstm_out_option, lstm_out_question, name="oq_")
 
-        # attention_out: [batch_size, hidden_size * 2 * 3]
-        self.attention_out = tf.concat([self.attention_cq, self.lstm_avg_question, self.attention_oq], axis=1)
+            # attention_out: [batch_size, hidden_size * 2 * 3]
+            attention_out = tf.concat([attention_cq, lstm_avg_question, attention_oq], axis=1)
 
-        # Fully Connected Layer
-        self.fc_out = _fc_layer(self.attention_out)
+            # Fully Connected Layer
+            fc_out = _fc_layer(attention_out)
 
-        # Highway Layer
-        with tf.name_scope("highway"):
-            self.highway = _highway_layer(self.fc_out, self.fc_out.get_shape()[1], num_layers=1, bias=0)
+            # Highway Layer
+            with tf.variable_scope("highway", reuse=tf.AUTO_REUSE):
+                highway = _highway_layer(fc_out, fc_out.get_shape()[1], num_layers=1, bias=0)
+                h_drop = tf.nn.dropout(highway, dropout_keep_prob)
 
-        # Add dropout
-        with tf.name_scope("dropout"):
-            self.h_drop = tf.nn.dropout(self.highway, self.dropout_keep_prob)
+            # Final scores
+            with tf.variable_scope("output", reuse=tf.AUTO_REUSE):
+                W = tf.get_variable("W", shape=[fc_hidden_size, 1],
+                                    initializer=tf.truncated_normal_initializer(stddev=0.1))
+                b = tf.get_variable("b", shape=[1], initializer=tf.constant_initializer(value=0.1))
+                logits = tf.nn.xw_plus_b(h_drop, W, b, name="logits")
+                scores = tf.sigmoid(logits, name="scores")
 
-        # Final scores
-        with tf.name_scope("output"):
-            W = tf.Variable(tf.truncated_normal(shape=[fc_hidden_size, 1],
-                                                stddev=0.1, dtype=tf.float32), name="W")
-            b = tf.Variable(tf.constant(value=0.1, shape=[1], dtype=tf.float32), name="b")
-            self.logits = tf.nn.xw_plus_b(self.h_drop, W, b, name="logits")
-            self.scores = tf.sigmoid(self.logits, name="scores")
+            return visual_cq, visual_oq, scores
+
+        self.visual_cq = []
+        self.visual_oq = []
+        self.scores_outputs = []
+
+        for index in range(pair_size):
+            visual_cq, visual_oq, scores = _sub_network(
+                tf.unstack(self.input_x_content, axis=0)[index],
+                tf.unstack(self.input_x_question, axis=0)[index],
+                tf.unstack(self.input_x_option, axis=0)[index],
+                self.dropout_keep_prob, self.is_training)
+            self.visual_cq.append(visual_cq)
+            self.visual_oq.append(visual_oq)
+            self.scores_outputs.append(scores)
+
+        print(self.scores_outputs)
 
         # Calculate mean cross-entropy loss, L2 loss
         with tf.name_scope("loss"):
-            losses = tf.reduce_mean(tf.square(self.input_y - self.scores), name="losses")
+            front_loss = self.scores_outputs[0] - tf.unstack(self.input_y, axis=0)[0]
+            behind_loss = self.scores_outputs[1] - tf.unstack(self.input_y, axis=0)[1]
+            losses = tf.reduce_mean(tf.square(front_loss - behind_loss), name="losses")
             l2_losses = tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()],
                                  name="l2_losses") * l2_reg_lambda
             self.loss = tf.add(losses, l2_losses, name="loss")
+
+        for v in tf.trainable_variables():
+            print(v.name)

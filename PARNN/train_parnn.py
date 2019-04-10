@@ -9,9 +9,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorboard.plugins import projector
-from text_tarnn import TextTARNN
+from text_parnn import TextPARNN
+from utils import pairwise_data_helpers as dh
 from utils import checkmate as cm
-from utils import data_helpers as dh
 from sklearn.metrics import mean_squared_error
 
 # Parameters
@@ -30,8 +30,8 @@ if TRAIN_OR_RESTORE == 'T':
 if TRAIN_OR_RESTORE == 'R':
     logger = dh.logger_fn("tflog", "logs/restore-{0}.log".format(time.asctime()))
 
-TRAININGSET_DIR = '../data/Train.json'
-VALIDATIONSET_DIR = '../data/Validation.json'
+TRAININGSET_DIR = '../data/Validation_pairwise.json'
+VALIDATIONSET_DIR = '../data/Validation_pairwise.json'
 METADATA_DIR = '../data/metadata.tsv'
 
 # Data Parameters
@@ -42,9 +42,10 @@ tf.flags.DEFINE_string("metadata_file", METADATA_DIR, "Metadata file for embeddi
 tf.flags.DEFINE_string("train_or_restore", TRAIN_OR_RESTORE, "Train or Restore.")
 
 # Model Hyperparameters
+tf.flags.DEFINE_integer("pair_size", 2, "Pairwise size (default: 2)")
 tf.flags.DEFINE_float("learning_rate", 0.001, "The learning rate (default: 0.001)")
 tf.flags.DEFINE_string("pad_seq_len", "350,15,10", "Recommended padding Sequence length of data (depends on the data)")
-tf.flags.DEFINE_string("attention_type", "cosine", "Type of Attention ('normal', 'cosine', 'mlp')")
+tf.flags.DEFINE_string("attention_type", "mlp", "Type of Attention ('normal', 'cosine', 'mlp')")
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
 tf.flags.DEFINE_integer("embedding_type", 1, "The embedding type (default: 1)")
 tf.flags.DEFINE_integer("lstm_hidden_size", 256, "Hidden size for bi-lstm layer(default: 256)")
@@ -75,8 +76,8 @@ logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__g
                                 for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
 
 
-def train_tarnn():
-    """Training TARNN model."""
+def train_parnn():
+    """Training PARNN model."""
 
     # Load sentences, labels, and training parameters
     logger.info("✔︎ Loading data...")
@@ -96,7 +97,7 @@ def train_tarnn():
     # Build vocabulary
     VOCAB_SIZE, pretrained_word2vec_matrix = dh.load_word2vec_matrix(FLAGS.embedding_dim)
 
-    # Build a graph and tarnn object
+    # Build a graph and parnn object
     with tf.Graph().as_default():
         session_conf = tf.ConfigProto(
             allow_soft_placement=FLAGS.allow_soft_placement,
@@ -104,7 +105,8 @@ def train_tarnn():
         session_conf.gpu_options.allow_growth = FLAGS.gpu_options_allow_growth
         sess = tf.Session(config=session_conf)
         with sess.as_default():
-            tarnn = TextTARNN(
+            parnn = TextPARNN(
+                pair_size=FLAGS.pair_size,
                 sequence_length=list(map(int, FLAGS.pad_seq_len.split(','))),
                 vocab_size=VOCAB_SIZE,
                 lstm_hidden_size=FLAGS.lstm_hidden_size,
@@ -118,12 +120,12 @@ def train_tarnn():
             # Define training procedure
             with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                 learning_rate = tf.train.exponential_decay(learning_rate=FLAGS.learning_rate,
-                                                           global_step=tarnn.global_step, decay_steps=FLAGS.decay_steps,
+                                                           global_step=parnn.global_step, decay_steps=FLAGS.decay_steps,
                                                            decay_rate=FLAGS.decay_rate, staircase=True)
                 optimizer = tf.train.AdamOptimizer(learning_rate)
-                grads, vars = zip(*optimizer.compute_gradients(tarnn.loss))
+                grads, vars = zip(*optimizer.compute_gradients(parnn.loss))
                 grads, _ = tf.clip_by_global_norm(grads, clip_norm=FLAGS.norm_ratio)
-                train_op = optimizer.apply_gradients(zip(grads, vars), global_step=tarnn.global_step, name="train_op")
+                train_op = optimizer.apply_gradients(zip(grads, vars), global_step=parnn.global_step, name="train_op")
 
             # Keep track of gradient values and sparsity (optional)
             grad_summaries = []
@@ -154,7 +156,7 @@ def train_tarnn():
             best_checkpoint_dir = os.path.abspath(os.path.join(out_dir, "bestcheckpoints"))
 
             # Summaries for loss
-            loss_summary = tf.summary.scalar("loss", tarnn.loss)
+            loss_summary = tf.summary.scalar("loss", parnn.loss)
 
             # Train summaries
             train_summary_op = tf.summary.merge([loss_summary, grad_summaries_merged])
@@ -170,7 +172,7 @@ def train_tarnn():
             best_saver = cm.BestCheckpointSaver(save_dir=best_checkpoint_dir, num_to_keep=3, maximize=False)
 
             if FLAGS.train_or_restore == 'R':
-                # Load tarnn model
+                # Load parnn model
                 logger.info("✔︎ Loading model...")
                 checkpoint_file = tf.train.latest_checkpoint(checkpoint_dir)
                 logger.info(checkpoint_file)
@@ -196,51 +198,63 @@ def train_tarnn():
                 # Save the embedding visualization
                 saver.save(sess, os.path.join(out_dir, "embedding", "embedding.ckpt"))
 
-            current_step = sess.run(tarnn.global_step)
+            current_step = sess.run(parnn.global_step)
 
-            def train_step(x_batch_content, x_batch_question, x_batch_option, y_batch):
+            def train_step(batch_train):
                 """A single training step"""
+                x_content_batch_front, x_content_batch_behind, \
+                x_question_batch_front, x_question_batch_behind, \
+                x_option_batch_front, x_option_batch_behind, \
+                y_batch_front, y_batch_behind = zip(*batch_train)
+
                 feed_dict = {
-                    tarnn.input_x_content: x_batch_content,
-                    tarnn.input_x_question: x_batch_question,
-                    tarnn.input_x_option: x_batch_option,
-                    tarnn.input_y: y_batch,
-                    tarnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
-                    tarnn.is_training: True
+                    parnn.input_x_content: [x_content_batch_front, x_content_batch_behind],
+                    parnn.input_x_question: [x_question_batch_front, x_question_batch_behind],
+                    parnn.input_x_option: [x_option_batch_front, x_option_batch_behind],
+                    parnn.input_y: [y_batch_front, y_batch_behind],
+                    parnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
+                    parnn.is_training: True
                 }
                 _, step, summaries, loss = sess.run(
-                    [train_op, tarnn.global_step, train_summary_op, tarnn.loss], feed_dict)
+                    [train_op, parnn.global_step, train_summary_op, parnn.loss], feed_dict)
                 logger.info("step {0}: loss {1:g}".format(step, loss))
                 train_summary_writer.add_summary(summaries, step)
 
-            def validation_step(x_val_content, x_val_question, x_val_option, y_val, writer=None):
+            def validation_step(batches_val, writer=None):
                 """Evaluates model on a validation set"""
-                batches_validation = dh.batch_iter(list(zip(x_val_content, x_val_question, x_val_option, y_val)),
-                                                   FLAGS.batch_size, 1)
-
                 eval_counter, eval_loss = 0, 0.0
 
-                true_labels = []
-                predicted_scores = []
+                front_true_labels = []
+                behind_true_labels = []
+                front_predicted_scores = []
+                behind_predicted_scores = []
 
-                for batch_validation in batches_validation:
-                    x_batch_content, x_batch_question, x_batch_option, y_batch = zip(*batch_validation)
+                for batch_validation in batches_val:
+                    x_content_batch_front, x_content_batch_behind, \
+                    x_question_batch_front, x_question_batch_behind, \
+                    x_option_batch_front, x_option_batch_behind, \
+                    y_batch_front, y_batch_behind = zip(*batch_validation)
                     feed_dict = {
-                        tarnn.input_x_content: x_batch_content,
-                        tarnn.input_x_question: x_batch_question,
-                        tarnn.input_x_option: x_batch_option,
-                        tarnn.input_y: y_batch,
-                        tarnn.dropout_keep_prob: 1.0,
-                        tarnn.is_training: False
+                        parnn.input_x_content: [x_content_batch_front, x_content_batch_behind],
+                        parnn.input_x_question: [x_question_batch_front, x_question_batch_behind],
+                        parnn.input_x_option: [x_option_batch_front, x_option_batch_behind],
+                        parnn.input_y: [y_batch_front, y_batch_behind],
+                        parnn.dropout_keep_prob: 1.0,
+                        parnn.is_training: False
                     }
                     step, summaries, scores, cur_loss = sess.run(
-                        [tarnn.global_step, validation_summary_op, tarnn.scores, tarnn.loss], feed_dict)
+                        [parnn.global_step, validation_summary_op, parnn.scores_outputs, parnn.loss], feed_dict)
 
                     # Prepare for calculating metrics
-                    for i in y_batch:
-                        true_labels.append(i)
-                    for j in scores:
-                        predicted_scores.append(j)
+                    for i in y_batch_front:
+                        front_true_labels.append(i)
+                    for j in scores[0]:
+                        front_predicted_scores.append(j)
+
+                    for i in y_batch_behind:
+                        behind_true_labels.append(i)
+                    for j in scores[1]:
+                        behind_predicted_scores.append(j)
 
                     eval_loss = eval_loss + cur_loss
                     eval_counter = eval_counter + 1
@@ -251,28 +265,34 @@ def train_tarnn():
                 eval_loss = float(eval_loss / eval_counter)
 
                 # Calculate RMSE
-                rmse = mean_squared_error(true_labels, predicted_scores) ** 0.5
+                front_rmse = mean_squared_error(front_true_labels, front_predicted_scores) ** 0.5
+                behind_rmse = mean_squared_error(behind_true_labels, behind_predicted_scores) ** 0.5
+                avg_rmse = (front_rmse + behind_rmse) / 2
 
-                return eval_loss, rmse
+                # Calculate DOA
+                doa = dh.cal_doa(front_true_labels, behind_true_labels, front_predicted_scores, behind_predicted_scores)
+
+                return eval_loss, avg_rmse, doa
 
             # Generate batches
-            batches_train = dh.batch_iter(list(zip(x_train_content, x_train_question, x_train_option, y_train)),
-                                          FLAGS.batch_size, FLAGS.num_epochs)
+            batches_train = dh.batch_iter(
+                (x_train_content, x_train_question, x_train_option, y_train), FLAGS.batch_size, FLAGS.num_epochs)
 
-            num_batches_per_epoch = int((len(y_train) - 1) / FLAGS.batch_size) + 1
+            num_batches_per_epoch = int((len(y_train[0]) - 1) / FLAGS.batch_size) + 1
 
             # Training loop. For each batch...
             for batch_train in batches_train:
-                x_batch_train_content, x_batch_train_question, x_batch_train_option, y_batch_train = zip(*batch_train)
-                train_step(x_batch_train_content, x_batch_train_question, x_batch_train_option, y_batch_train)
-                current_step = tf.train.global_step(sess, tarnn.global_step)
+                train_step(batch_train)
+                current_step = tf.train.global_step(sess, parnn.global_step)
 
                 if current_step % FLAGS.evaluate_every == 0:
                     logger.info("\nEvaluation:")
-                    eval_loss, rmse = validation_step(x_val_content, x_val_question, x_val_option, y_val,
-                                                      writer=validation_summary_writer)
-                    logger.info("All Validation set: Loss {0:g} | RMSE {1:g}".format(eval_loss, rmse))
-                    best_saver.handle(rmse, sess, current_step)
+                    batches_val = dh.batch_iter(
+                        (x_val_content, x_val_question, x_val_option, y_val), FLAGS.batch_size, 1)
+                    eval_loss, avg_rmse, doa = validation_step(batches_val, writer=validation_summary_writer)
+                    logger.info("All Validation set: Loss {0:g} | RMSE {1:g} | doa {2:g}"
+                                .format(eval_loss, avg_rmse, doa))
+                    best_saver.handle(avg_rmse, sess, current_step)
                 if current_step % FLAGS.checkpoint_every == 0:
                     checkpoint_prefix = os.path.join(checkpoint_dir, "model")
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
@@ -285,4 +305,4 @@ def train_tarnn():
 
 
 if __name__ == '__main__':
-    train_tarnn()
+    train_parnn()

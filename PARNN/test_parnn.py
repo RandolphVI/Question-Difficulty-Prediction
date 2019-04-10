@@ -7,8 +7,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
+from utils import pairwise_data_helpers as dh
 from utils import checkmate as cm
-from utils import data_helpers as dh
 from sklearn.metrics import mean_squared_error
 
 # Parameters
@@ -22,9 +22,9 @@ while not (MODEL.isdigit() and len(MODEL) == 10):
     MODEL = input("✘ The format of your input is illegal, it should be like(1490175368), please re-input: ")
 logger.info("✔︎ The format of your input is legal, now loading to next step...")
 
-TRAININGSET_DIR = '../data/Train.json'
-VALIDATIONSET_DIR = '../data/Validation.json'
-TESTSET_DIR = '../data/Test.json'
+TRAININGSET_DIR = '../data/Train_pairwise.json'
+VALIDATIONSET_DIR = '../data/Validation_pairwise.json'
+TESTSET_DIR = '../data/Test_pairwise.json'
 MODEL_DIR = 'runs/' + MODEL + '/checkpoints/'
 BEST_MODEL_DIR = 'runs/' + MODEL + '/bestcheckpoints/'
 SAVE_DIR = 'results/' + MODEL
@@ -37,6 +37,7 @@ tf.flags.DEFINE_string("checkpoint_dir", MODEL_DIR, "Checkpoint directory from t
 tf.flags.DEFINE_string("best_checkpoint_dir", BEST_MODEL_DIR, "Best checkpoint directory from training run")
 
 # Model Hyperparameters
+tf.flags.DEFINE_integer("pair_size", 2, "Pairwise size (default: 2)")
 tf.flags.DEFINE_string("pad_seq_len", "350,15,10", "Recommended padding Sequence length of data (depends on the data)")
 tf.flags.DEFINE_string("attention_type", "mlp", "Type of Attention ('normal', 'cosine', 'mlp')")
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
@@ -62,12 +63,11 @@ logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__g
                                 for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
 
 
-def test_tarnn():
-    """Test TARNN model."""
+def test_parnn():
+    """Test PARNN model."""
 
     # Load data
     logger.info("✔︎ Loading data...")
-    logger.info("Recommended padding Sequence length is: {0}".format(FLAGS.pad_seq_len))
 
     logger.info("✔︎ Test data processing...")
     test_data = dh.load_data_and_labels(FLAGS.test_data_file, FLAGS.embedding_dim, data_aug_flag=False)
@@ -75,7 +75,7 @@ def test_tarnn():
     logger.info("✔︎ Test data padding...")
     x_test_content, x_test_question, x_test_option, y_test = dh.pad_data(test_data, FLAGS.pad_seq_len)
 
-    # Load tarnn model
+    # Load parnn model
     BEST_OR_LATEST = input("☛ Load Best or Latest Model?(B/L): ")
 
     while not (BEST_OR_LATEST.isalpha() and BEST_OR_LATEST.upper() in ['B', 'L']):
@@ -118,10 +118,10 @@ def test_tarnn():
             # Save the .pb model file
             output_graph_def = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def,
                                                                             output_node_names.split("|"))
-            tf.train.write_graph(output_graph_def, "graph", "graph-tarnn-{0}.pb".format(MODEL), as_text=False)
+            tf.train.write_graph(output_graph_def, "graph", "graph-parnn-{0}.pb".format(MODEL), as_text=False)
 
             # Generate batches for one epoch
-            batches = dh.batch_iter(list(zip(x_test_content, x_test_question, x_test_option, y_test)),
+            batches = dh.batch_iter((x_test_content, x_test_question, x_test_option, y_test),
                                     FLAGS.batch_size, 1, shuffle=False)
 
             test_counter, test_loss = 0, 0.0
@@ -131,22 +131,26 @@ def test_tarnn():
             predicted_scores = []
 
             for batch_test in batches:
-                x_batch_content, x_batch_question, x_batch_option, y_batch = zip(*batch_test)
+                x_content_batch_front, x_content_batch_behind, \
+                x_question_batch_front, x_question_batch_behind, \
+                x_option_batch_front, x_option_batch_behind, \
+                y_batch_front, y_batch_behind = zip(*batch_test)
                 feed_dict = {
-                    input_x_content: x_batch_content,
-                    input_x_question: x_batch_question,
-                    input_x_option: x_batch_option,
-                    input_y: y_batch,
+                    input_x_content: [x_content_batch_front, x_content_batch_behind],
+                    input_x_question: [x_question_batch_front, x_question_batch_behind],
+                    input_x_option: [x_option_batch_front, x_option_batch_behind],
+                    input_y: [y_batch_front, y_batch_behind],
                     dropout_keep_prob: 1.0,
                     is_training: False
                 }
                 batch_scores, cur_loss = sess.run([scores, loss], feed_dict)
 
                 # Prepare for calculating metrics
-                for i in y_batch:
+                for i in y_batch_front:
                     true_labels.append(i)
-                for j in batch_scores:
+                for j in batch_scores[0]:
                     predicted_scores.append(j)
+                print(predicted_scores)
 
                 test_loss = test_loss + cur_loss
                 test_counter = test_counter + 1
@@ -168,4 +172,4 @@ def test_tarnn():
 
 
 if __name__ == '__main__':
-    test_tarnn()
+    test_parnn()

@@ -142,10 +142,10 @@ class TextTARNN(object):
 
             # Concat output
             # [batch_size, sequence_length, lstm_hidden_size * 2]
-            lstm_out = tf.concat(outputs, axis=2, name="lstm_out_" + name)
+            lstm_out = tf.concat(outputs, axis=2, name=name + "lstm_out")
 
             # [batch_size, lstm_hidden_size * 2]
-            lstm_avg = tf.reduce_mean(lstm_out, axis=1, name="lstm_avg_" + name)
+            lstm_avg = tf.reduce_mean(lstm_out, axis=1, name=name + "lstm_avg_")
 
             return lstm_out, lstm_avg
 
