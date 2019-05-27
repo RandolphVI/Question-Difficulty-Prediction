@@ -103,6 +103,8 @@ target/
 *.jpg
 *.png
 *.pickle
+*.xls
+*.doc
 !/data
 !/data/data_sample.json
 
