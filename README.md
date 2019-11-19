@@ -50,10 +50,6 @@ The framework of TARNN:
 3. The **Attention Layer** extracts words of the document (or the option) with high scores as dominant information for a specific question, which is helpful for visualizing the model and improving the performance.
 4. Finally the **Prediction Layer** shows predicted difficulty scores of the given READING problem.
 
-References:
-
-> Huang Z, Liu Q, Chen E, et al. Question Difﬁculty Prediction for READING Problems in Standard Tests[C]//Thirty-First AAAI Conference on Artificial Intelligence. 2017.
-
 ## About Me
 
 黄威，Randolph
