@@ -59,51 +59,18 @@ def create_bow_feature(input_file, pickle_file, output_file):
             fout.write(json.dumps(data_record, ensure_ascii=False) + '\n')
 
 
-def get_data_logistic(train_file, test_file):
-    x_train, y_train = [], []
-    x_test, y_test = [], []
-    with open(train_file, 'r') as f_train:
+def load_data(data_file):
+    x_data, y_data = [], []
+    with open(data_file, 'r') as f_train:
         for eachline in f_train:
             line = json.loads(eachline)
-            x_train.append(list(map(float, line['feature'])))
-            y_train.append(float(line['diff']))
-    with open(test_file, 'r') as f_test:
-        for eachline in f_test:
-            line = json.loads(eachline)
-            x_test.append(list(map(float, line['feature'])))
-            y_test.append(float(line['diff']))
+            x_data.append(list(map(float, line['feature'])))
+            y_data.append(float(line['diff']))
 
-    x_train = np.array(x_train)
-    # `sklearn.linear_model` doesn't support the <float> format (so need to times 1000 and convert to <int> format)
-    y_train = np.array(list(map(int, np.array(y_train) * 1000)))
+    x_data = np.array(x_data)
+    y_data = np.array(y_data)
 
-    x_test = np.array(x_test)
-    y_test = np.array(list(map(int, np.array(y_test) * 1000)))
-
-    return x_train, y_train, x_test, y_test
-
-
-def get_data_rf(train_file, test_file):
-    x_train, y_train = [], []
-    x_test, y_test = [], []
-    with open(train_file, 'r') as f_train:
-        for eachline in f_train:
-            line = json.loads(eachline)
-            x_train.append(list(map(float, line['feature'])))
-            y_train.append(float(line['diff']))
-    with open(test_file, 'r') as f_test:
-        for eachline in f_test:
-            line = json.loads(eachline)
-            x_test.append(list(map(float, line['feature'])))
-            y_test.append(float(line['diff']))
-
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-
-    x_test = np.array(x_test)
-    y_test = np.array(y_test)
-
-    return x_train, y_train, x_test, y_test
+    return x_data, y_data
 
 
 def evaluation(test_y, pred_y):

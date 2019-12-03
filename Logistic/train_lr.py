@@ -5,18 +5,16 @@ import sys
 import time
 import data_process as dp
 import tensorflow as tf
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
 from sklearn.externals import joblib
 
-logger = dp.logger_fn("logistic-log", "logistic/train-{0}.log".format(time.asctime()))
+logger = dp.logger_fn("lr-log", "lr/train-{0}.log".format(time.asctime()))
 
 TRAININGSET_DIR = '../data/Train_BOW.json'
-TEST_DIR = '../data/Test_BOW.json'
-MODEL_DIR = 'logistic_model.m'
+MODEL_DIR = 'lr_model.m'
 
 # Data Parameters
 tf.flags.DEFINE_string("training_data_file", TRAININGSET_DIR, "Data source for the training data.")
-tf.flags.DEFINE_string("test_data_file", TEST_DIR, "Data source for the test data.")
 tf.flags.DEFINE_string("model_file", MODEL_DIR, "Model file.")
 
 FLAGS = tf.flags.FLAGS
@@ -29,11 +27,11 @@ def train():
     # Load data
     logger.info("✔︎ Loading data...")
 
-    x_train, y_train, x_test, y_test = dp.get_data_logistic(FLAGS.training_data_file, FLAGS.test_data_file)
+    x_train, y_train = dp.load_data(FLAGS.training_data_file)
 
     logger.info("✔︎ Finish building BOW.")
 
-    model = LogisticRegression()
+    model = LinearRegression()
 
     logger.info("✔︎ Training model...")
     model.fit(x_train, y_train)
