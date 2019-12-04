@@ -151,12 +151,15 @@ def test_tarnn():
                 test_loss = test_loss + cur_loss
                 test_counter = test_counter + 1
 
+            # Calculate PCC & DOA
+            pcc, doa = dh.evaluation(true_labels, predicted_scores)
             # Calculate RMSE
             rmse = mean_squared_error(true_labels, predicted_scores) ** 0.5
 
             test_loss = float(test_loss / test_counter)
 
-            logger.info("☛ All Test Dataset: Loss {0:g} | RMSE {1:g}".format(test_loss, rmse))
+            logger.info("☛ All Test Dataset: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {1:g}".
+                        format(test_loss, pcc, doa, rmse))
 
             # Save the prediction result
             if not os.path.exists(SAVE_DIR):

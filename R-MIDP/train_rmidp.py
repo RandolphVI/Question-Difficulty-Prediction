@@ -55,11 +55,11 @@ tf.flags.DEFINE_float("threshold", 0.5, "Threshold for prediction classes (defau
 # Training Parameters
 tf.flags.DEFINE_integer("batch_size", 256, "Batch Size (default: 256)")
 tf.flags.DEFINE_integer("num_epochs", 50, "Number of training epochs (default: 100)")
-tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 5000)")
+tf.flags.DEFINE_integer("evaluate_every", 500, "Evaluate model on dev set after this many steps (default: 5000)")
 tf.flags.DEFINE_float("norm_ratio", 2, "The ratio of the sum of gradients norms of trainable variable (default: 1.25)")
 tf.flags.DEFINE_integer("decay_steps", 5000, "how many steps before decay learning rate. (default: 500)")
 tf.flags.DEFINE_float("decay_rate", 0.95, "Rate of decay for learning rate. (default: 0.95)")
-tf.flags.DEFINE_integer("checkpoint_every", 10, "Save model after this many steps (default: 1000)")
+tf.flags.DEFINE_integer("checkpoint_every", 500, "Save model after this many steps (default: 1000)")
 tf.flags.DEFINE_integer("num_checkpoints", 10, "Number of checkpoints to store (default: 50)")
 
 # Misc Parameters
@@ -165,7 +165,7 @@ def train_rmidp():
             validation_summary_writer = tf.summary.FileWriter(validation_summary_dir, sess.graph)
 
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
-            best_saver = cm.BestCheckpointSaver(save_dir=best_checkpoint_dir, num_to_keep=3, maximize=False)
+            best_saver = cm.BestCheckpointSaver(save_dir=best_checkpoint_dir, num_to_keep=5, maximize=False)
 
             if FLAGS.train_or_restore == 'R':
                 # Load rmidp model
@@ -248,10 +248,12 @@ def train_rmidp():
 
                 eval_loss = float(eval_loss / eval_counter)
 
+                # Calculate PCC & DOA
+                pcc, doa = dh.evaluation(true_labels, predicted_scores)
                 # Calculate RMSE
                 rmse = mean_squared_error(true_labels, predicted_scores) ** 0.5
 
-                return eval_loss, rmse
+                return eval_loss, pcc, doa, rmse
 
             # Generate batches
             batches_train = dh.batch_iter(list(zip(x_train_content, x_train_question, x_train_option, y_train)),
@@ -267,9 +269,10 @@ def train_rmidp():
 
                 if current_step % FLAGS.evaluate_every == 0:
                     logger.info("\nEvaluation:")
-                    eval_loss, rmse = validation_step(x_val_content, x_val_question, x_val_option, y_val,
-                                                      writer=validation_summary_writer)
-                    logger.info("All Validation set: Loss {0:g} | RMSE {1:g}".format(eval_loss, rmse))
+                    eval_loss, pcc, doa, rmse = validation_step(x_val_content, x_val_question, x_val_option, y_val,
+                                                                writer=validation_summary_writer)
+                    logger.info("All Validation set: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {3:g}"
+                                .format(eval_loss, pcc, doa, rmse))
                     best_saver.handle(rmse, sess, current_step)
                 if current_step % FLAGS.checkpoint_every == 0:
                     checkpoint_prefix = os.path.join(checkpoint_dir, "model")
