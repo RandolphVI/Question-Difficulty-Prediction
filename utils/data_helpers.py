@@ -2,12 +2,14 @@
 __author__ = 'Randolph'
 
 import os
+import math
 import gensim
 import logging
 import json
 import numpy as np
 
 from collections import OrderedDict
+from scipy import stats
 from gensim.models import KeyedVectors
 from tflearn.data_utils import pad_sequences
 
@@ -54,6 +56,39 @@ def create_prediction_file(output_file, all_id, all_labels, all_predict_scores):
                 ('predict_scores', predict_scores)
             ])
             fout.write(json.dumps(data_record, ensure_ascii=False) + '\n')
+
+
+def evaluation(true_label, pred_label):
+    test_y = []
+    pred_y = []
+    for i in true_label:
+        for value in i:
+            test_y.append(i)
+    for j in pred_label:
+        for value in j:
+            pred_y.append(value)
+
+    # compute pcc
+    pcc, _ = stats.pearsonr(pred_y, test_y)
+    if math.isnan(pcc):
+        print('ERROR: PCC=nan', test_y, pred_y)
+    # compute doa
+    n = 0
+    correct_num = 0
+    for i in range(len(test_y) - 1):
+        for j in range(i + 1, len(test_y)):
+            if (test_y[i] > test_y[j]) and (pred_y[i] > pred_y[j]):
+                correct_num += 1
+            elif (test_y[i] == test_y[j]) and (pred_y[i] == pred_y[j]):
+                continue
+            elif (test_y[i] < test_y[j]) and (pred_y[i] < pred_y[j]):
+                correct_num += 1
+            n += 1
+    if n == 0:
+        print(test_y)
+        return -1, -1
+    doa = correct_num / n
+    return pcc, doa
 
 
 def create_metadata_file(embedding_size, output_file=METADATA_DIR):
