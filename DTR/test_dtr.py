@@ -40,7 +40,7 @@ def test():
     rmse = mean_squared_error(y_test, y_pred) ** 0.5
     r2 = r2_score(y_test, y_pred)
 
-    logger.info("☛ DTR: PCC {0:g} | DOA {1:g} | RSME {2:g} | R2 {3:g}".format(pcc, doa, rmse, r2))
+    logger.info("☛ DTR: PCC {0:g} | DOA {1:g} | RMSE {2:g} | R2 {3:g}".format(pcc, doa, rmse, r2))
 
     logger.info("✔︎ Done.")
 

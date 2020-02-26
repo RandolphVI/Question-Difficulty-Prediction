@@ -12,7 +12,7 @@ from tensorboard.plugins import projector
 from text_cmidp import TextCMIDP
 from utils import checkmate as cm
 from utils import data_helpers as dh
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 
 # Parameters
 # ==================================================
@@ -256,8 +256,9 @@ def train_cmidp():
                 pcc, doa = dh.evaluation(true_labels, predicted_scores)
                 # Calculate RMSE
                 rmse = mean_squared_error(true_labels, predicted_scores) ** 0.5
+                r2 = r2_score(true_labels, predicted_scores)
 
-                return eval_loss, pcc, doa, rmse
+                return eval_loss, pcc, doa, rmse, r2
 
             # Generate batches
             batches_train = dh.batch_iter(list(zip(x_train_content, x_train_question, x_train_option, y_train)),
@@ -273,10 +274,10 @@ def train_cmidp():
 
                 if current_step % FLAGS.evaluate_every == 0:
                     logger.info("\nEvaluation:")
-                    eval_loss, pcc, doa, rmse = validation_step(x_val_content, x_val_question, x_val_option, y_val,
-                                                                writer=validation_summary_writer)
-                    logger.info("All Validation set: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {3:g}"
-                                .format(eval_loss, pcc, doa, rmse))
+                    eval_loss, pcc, doa, rmse, r2 = validation_step(x_val_content, x_val_question, x_val_option, y_val,
+                                                                    writer=validation_summary_writer)
+                    logger.info("All Validation set: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {3:g} | R2 {4:g}"
+                                .format(eval_loss, pcc, doa, rmse, r2))
                     best_saver.handle(rmse, sess, current_step)
                 if current_step % FLAGS.checkpoint_every == 0:
                     checkpoint_prefix = os.path.join(checkpoint_dir, "model")

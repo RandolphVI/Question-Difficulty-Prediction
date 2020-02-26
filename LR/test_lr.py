@@ -6,7 +6,7 @@ import time
 import data_process as dp
 import tensorflow as tf
 from sklearn.externals import joblib
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 
 logger = dp.logger_fn("lr-log", "lr/test-{0}.log".format(time.asctime()))
 
@@ -38,8 +38,9 @@ def test():
     logger.info("✔︎ Calculate Metrics...")
     pcc, doa = dp.evaluation(y_test, y_pred)
     rmse = mean_squared_error(y_test, y_pred) ** 0.5
+    r2 = r2_score(y_test, y_pred)
 
-    logger.info("☛ Logistic: PCC {0:g}, DOA {1:g}, RSME {2:g}".format(pcc, doa, rmse))
+    logger.info("☛ Logistic: PCC {0:g} | DOA {1:g} | RMSE {2:g} | R2 {3:g}".format(pcc, doa, rmse, r2))
 
     logger.info("✔︎ Done.")
 

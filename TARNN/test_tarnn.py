@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from utils import checkmate as cm
 from utils import data_helpers as dh
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 
 # Parameters
 # ==================================================
@@ -155,11 +155,12 @@ def test_tarnn():
             pcc, doa = dh.evaluation(true_labels, predicted_scores)
             # Calculate RMSE
             rmse = mean_squared_error(true_labels, predicted_scores) ** 0.5
+            r2 = r2_score(true_labels, predicted_scores)
 
             test_loss = float(test_loss / test_counter)
 
-            logger.info("☛ All Test Dataset: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {1:g}".
-                        format(test_loss, pcc, doa, rmse))
+            logger.info("☛ All Test Dataset: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {3:g} | R2 {4:g}"
+                        .format(test_loss, pcc, doa, rmse, r2))
 
             # Save the prediction result
             if not os.path.exists(SAVE_DIR):
