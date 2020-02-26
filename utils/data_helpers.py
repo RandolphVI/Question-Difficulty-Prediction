@@ -63,7 +63,7 @@ def evaluation(true_label, pred_label):
     pred_y = []
     for i in true_label:
         for value in i:
-            test_y.append(i)
+            test_y.append(value)
     for j in pred_label:
         for value in j:
             pred_y.append(value)
