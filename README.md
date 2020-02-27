@@ -50,6 +50,43 @@ The framework of TARNN:
 3. The **Attention Layer** extracts words of the document (or the option) with high scores as dominant information for a specific question, which is helpful for visualizing the model and improving the performance.
 4. Finally the **Prediction Layer** shows predicted difficulty scores of the given READING problem.
 
+## Reference
+
+**If you want to follow the paper or utilize the code, please note the following info in your work:** 
+
+- **Model C-MIDP/R-MIDP/H-MIDP**
+
+```bibtex
+@article{佟威2019数据驱动的数学试题难度预测,
+  author    = {佟威 and
+               汪飞 and
+               刘淇 and
+               陈恩红},
+  title     = {数据驱动的数学试题难度预测},
+  journal   = {计算机研究与发展},
+  pages     = {1007--1019},
+  year      = {2019},
+}
+```
+
+- **Model TARNN** (modified by TACNN)
+
+```bibtex
+@inproceedings{huang2017question,
+  author    = {Zhenya Huang and
+               Qi Liu and
+               Enchong Chen and
+               Hongke Zhao and
+               Mingyong Gao and
+               Si Wei and
+               Yu Su and
+               Guoping Hu},
+  title     = {Question Difficulty Prediction for READING Problems in Standard Tests},
+  booktitle = {Thirty-First AAAI Conference on Artificial Intelligence},
+  year      = {2017},
+}
+```
+
 ## About Me
 
 黄威，Randolph
