@@ -131,6 +131,7 @@ logs/
 temp.py
 TF/utils/pairwise_data_helpers.py
 TF/TACNN
+PyTorch/Others
 english_difficulty_prediction_dtr
 english_difficulty_prediction_tf
 english_difficulty_prediction_pytorch
