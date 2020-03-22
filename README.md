@@ -21,6 +21,43 @@ tion difficulty is not directly observable before the test is conducted, and tra
 
 Therefore, it is an urgent issue to automatically predict question difficulty without manual intervention. Fortunately, with abundant tests recorded by automatic test paper marking systems, test logs of examinees and text materials of questions, as the auxiliary information, become more and more available, which benefits a data-driven solution to this Question Difficulty Prediction (QDP) task, especially for the typical English READING problems. For example, a English READING problem contains a document material and  the several corresponding questions, and each question contains  the corresponding options.
 
+## Project
+
+```text
+.
+├── Sklearn
+│   ├── DTR
+│   ├── LR
+│   ├── SVM
+│   ├── XGBoost
+│   └── utils
+├── TF(TensorFlow)
+│   ├── C-MIDP
+│   ├── H-MIDP
+│   ├── R-MIDP
+│   ├── TARNN
+│   │   ├── test_tarnn.py
+│   │   ├── text_tarnn.py
+│   │   └── train_tarnn.py
+│   └── utils
+│       ├── checkmate.py
+│       └── data_helpers.py
+├── PyTorch
+│   ├── C-MIDP
+│   ├── H-MIDP
+│   ├── R-MIDP
+│   ├── TARNN
+│   └── utils
+├── data
+│   ├── word2vec_300.txt
+│   ├── test_sample.json
+│   ├── train_sample.json
+│   └── validation_sample.json
+├── LICENSE
+├── README.md
+└── requirements.txt
+```
+
 ## Data
 
 See data format in `data` folder which including the data sample files.

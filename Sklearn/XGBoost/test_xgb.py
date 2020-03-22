@@ -8,10 +8,10 @@ import tensorflow as tf
 from sklearn.externals import joblib
 from sklearn.metrics import mean_squared_error, r2_score
 
-logger = dp.logger_fn("dtr-log", "dtr/test-{0}.log".format(time.asctime()))
+logger = dp.logger_fn("lr-log", "lr/test-{0}.log".format(time.asctime()))
 
 TEST_DIR = '../data/Test_BOW.json'
-MODEL_DIR = 'dtr_model.m'
+MODEL_DIR = 'lr_model.m'
 
 # Data Parameters
 tf.flags.DEFINE_string("test_data_file", TEST_DIR, "Data source for the test data.")
@@ -40,7 +40,7 @@ def test():
     rmse = mean_squared_error(y_test, y_pred) ** 0.5
     r2 = r2_score(y_test, y_pred)
 
-    logger.info("☛ DTR: PCC {0:g} | DOA {1:g} | RMSE {2:g} | R2 {3:g}".format(pcc, doa, rmse, r2))
+    logger.info("☛ Logistic: PCC {0:g} | DOA {1:g} | RMSE {2:g} | R2 {3:g}".format(pcc, doa, rmse, r2))
 
     logger.info("✔︎ Done.")
 

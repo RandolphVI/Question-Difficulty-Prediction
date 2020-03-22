@@ -109,9 +109,9 @@ PARNN/
 quesnet/
 data/preprocess.py
 !/data
-!/data/train_sample.json
-!/data/validation_sample.json
-!/data/test_sample.json
+!/data/Train_sample.json
+!/data/Validation_sample.json
+!/data/Test_sample.json
 
 # Model File
 *.model

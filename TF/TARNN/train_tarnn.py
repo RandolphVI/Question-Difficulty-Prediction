@@ -7,10 +7,10 @@ import time
 import logging
 import tensorflow as tf
 
-from tensorboard.plugins import projector
 from text_tarnn import TextTARNN
 from TF.utils import checkmate as cm
 from TF.utils import data_helpers as dh
+from tensorboard.plugins import projector
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Parameters
@@ -29,8 +29,8 @@ if TRAIN_OR_RESTORE == 'T':
 if TRAIN_OR_RESTORE == 'R':
     logger = dh.logger_fn("tflog", "logs/restore-{0}.log".format(time.asctime()))
 
-TRAININGSET_DIR = '../../data/Train.json'
-VALIDATIONSET_DIR = '../../data/Validation.json'
+TRAININGSET_DIR = '../../data/Train_sample.json'
+VALIDATIONSET_DIR = '../../data/Validation_sample.json'
 METADATA_DIR = '../../data/metadata.tsv'
 
 # Data Parameters
