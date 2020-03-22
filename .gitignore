@@ -127,6 +127,9 @@ logs/
 
 # Related Code
 temp.py
+english_difficulty_prediction_dtr
+english_difficulty_prediction_tf
+english_difficulty_prediction_pytorch
 
 ### Else ###
 randolph/
