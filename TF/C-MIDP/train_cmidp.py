@@ -10,18 +10,18 @@ import tensorflow as tf
 
 from tensorboard.plugins import projector
 from text_cmidp import TextCMIDP
-from utils import checkmate as cm
-from utils import data_helpers as dh
+from TF.utils import checkmate as cm
+from TF.utils import data_helpers as dh
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Parameters
 # ==================================================
 
-TRAIN_OR_RESTORE = input("☛ Train or Restore?(T/R): ")
+TRAIN_OR_RESTORE = input("[Input] Train or Restore? (T/R): ")
 
 while not (TRAIN_OR_RESTORE.isalpha() and TRAIN_OR_RESTORE.upper() in ['T', 'R']):
-    TRAIN_OR_RESTORE = input("✘ The format of your input is illegal, please re-input: ")
-logging.info("✔︎ The format of your input is legal, now loading to next step...")
+    TRAIN_OR_RESTORE = input("[Error] The format of your input is illegal, please re-input: ")
+logging.info("The format of your input is legal, now loading to next step...")
 
 TRAIN_OR_RESTORE = TRAIN_OR_RESTORE.upper()
 
@@ -30,9 +30,9 @@ if TRAIN_OR_RESTORE == 'T':
 if TRAIN_OR_RESTORE == 'R':
     logger = dh.logger_fn("tflog", "logs/restore-{0}.log".format(time.asctime()))
 
-TRAININGSET_DIR = '../data/Train.json'
-VALIDATIONSET_DIR = '../data/Validation.json'
-METADATA_DIR = '../data/metadata.tsv'
+TRAININGSET_DIR = '../../data/Train.json'
+VALIDATIONSET_DIR = '../../data/Validation.json'
+METADATA_DIR = '../../data/metadata.tsv'
 
 # Data Parameters
 tf.flags.DEFINE_string("training_data_file", TRAININGSET_DIR, "Data source for the training data.")
@@ -52,7 +52,6 @@ tf.flags.DEFINE_string("num_filters", "200,400", "Comma-separated number of filt
 tf.flags.DEFINE_integer("pooling_size", 3, "Pooling sizes (default: '3')")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_float("threshold", 0.5, "Threshold for prediction classes (default: 0.5)")
 
 # Training Parameters
 tf.flags.DEFINE_integer("batch_size", 256, "Batch Size (default: 256)")
@@ -80,18 +79,18 @@ def train_cmidp():
     """Training cmdip model."""
 
     # Load sentences, labels, and training parameters
-    logger.info("✔︎ Loading data...")
+    logger.info("Loading data...")
 
-    logger.info("✔︎ Training data processing...")
+    logger.info("Training data processing...")
     train_data = dh.load_data_and_labels(FLAGS.training_data_file, FLAGS.embedding_dim, data_aug_flag=False)
 
-    logger.info("✔︎ Validation data processing...")
+    logger.info("Validation data processing...")
     val_data = dh.load_data_and_labels(FLAGS.validation_data_file, FLAGS.embedding_dim, data_aug_flag=False)
 
-    logger.info("✔︎ Training data padding...")
+    logger.info("Training data padding...")
     x_train_content, x_train_question, x_train_option, y_train = dh.pad_data(train_data, FLAGS.pad_seq_len)
 
-    logger.info("✔︎ Validation data padding...")
+    logger.info("Validation data padding...")
     x_val_content, x_val_question, x_val_option, y_val = dh.pad_data(val_data, FLAGS.pad_seq_len)
 
     # Build vocabulary
@@ -139,18 +138,18 @@ def train_cmidp():
 
             # Output directory for models and summaries
             if FLAGS.train_or_restore == 'R':
-                MODEL = input("☛ Please input the checkpoints model you want to restore, "
+                MODEL = input("[Input] Please input the checkpoints model you want to restore, "
                               "it should be like(1490175368): ")  # The model you want to restore
 
                 while not (MODEL.isdigit() and len(MODEL) == 10):
-                    MODEL = input("✘ The format of your input is illegal, please re-input: ")
-                logger.info("✔︎ The format of your input is legal, now loading to next step...")
+                    MODEL = input("[Error] The format of your input is illegal, please re-input: ")
+                logger.info("The format of your input is legal, now loading to next step...")
                 out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", MODEL))
-                logger.info("✔︎ Writing to {0}\n".format(out_dir))
+                logger.info("Writing to {0}\n".format(out_dir))
             else:
                 timestamp = str(int(time.time()))
                 out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
-                logger.info("✔︎ Writing to {0}\n".format(out_dir))
+                logger.info("Writing to {0}\n".format(out_dir))
 
             checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
             best_checkpoint_dir = os.path.abspath(os.path.join(out_dir, "bestcheckpoints"))
@@ -169,11 +168,11 @@ def train_cmidp():
             validation_summary_writer = tf.summary.FileWriter(validation_summary_dir, sess.graph)
 
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
-            best_saver = cm.BestCheckpointSaver(save_dir=best_checkpoint_dir, num_to_keep=5, maximize=False)
+            best_saver = cm.BestCheckpointSaver(save_dir=best_checkpoint_dir, num_to_keep=3, maximize=False)
 
             if FLAGS.train_or_restore == 'R':
                 # Load cmidp model
-                logger.info("✔︎ Loading model...")
+                logger.info("Loading model...")
                 checkpoint_file = tf.train.latest_checkpoint(checkpoint_dir)
                 logger.info(checkpoint_file)
 
@@ -282,10 +281,10 @@ def train_cmidp():
                 if current_step % FLAGS.checkpoint_every == 0:
                     checkpoint_prefix = os.path.join(checkpoint_dir, "model")
                     path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-                    logger.info("✔︎ Saved model checkpoint to {0}\n".format(path))
+                    logger.info("Saved model checkpoint to {0}\n".format(path))
                 if current_step % num_batches_per_epoch == 0:
                     current_epoch = current_step // num_batches_per_epoch
-                    logger.info("✔︎ Epoch {0} has finished!".format(current_epoch))
+                    logger.info("Epoch {0} has finished!".format(current_epoch))
 
     logger.info("✔︎ Done.")
 

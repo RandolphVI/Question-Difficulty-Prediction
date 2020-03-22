@@ -11,107 +11,12 @@ from tensorflow.python.ops import array_ops
 from tensorflow.contrib.layers import batch_norm
 
 
-class BatchNormLSTMCell(rnn.RNNCell):
-    """Batch normalized LSTM (cf. http://arxiv.org/abs/1603.09025)"""
-
-    def __init__(self, num_units, is_training=False, forget_bias=1.0,
-                 activation=tanh, reuse=None):
-        """Initialize the BNLSTM cell.
-
-        Args:
-          num_units: int, The number of units in the BNLSTM cell.
-          forget_bias: float, The bias added to forget gates (see above).
-            Must set to `0.0` manually when restoring from CudnnLSTM-trained
-            checkpoints.
-          activation: Activation function of the inner states.  Default: `tanh`.
-          reuse: (optional) Python boolean describing whether to reuse variables
-            in an existing scope.  If not `True`, and the existing scope already has
-            the given variables, an error is raised.
-        """
-        self._num_units = num_units
-        self._is_training = is_training
-        self._forget_bias = forget_bias
-        self._activation = activation
-        self._reuse = reuse
-
-    @property
-    def state_size(self):
-        return rnn.LSTMStateTuple(self._num_units, self._num_units)
-
-    @property
-    def output_size(self):
-        return self._num_units
-
-    def __call__(self, inputs, state, scope=None):
-        with tf.variable_scope(scope or type(self).__name__, reuse=self._reuse):
-            c, h = state
-            input_size = inputs.get_shape().as_list()[1]
-            W_xh = tf.get_variable('W_xh',
-                                   [input_size, 4 * self._num_units],
-                                   initializer=orthogonal_initializer())
-            W_hh = tf.get_variable('W_hh',
-                                   [self._num_units, 4 * self._num_units],
-                                   initializer=bn_lstm_identity_initializer(0.95))
-            bias = tf.get_variable('bias', [4 * self._num_units])
-
-            xh = tf.matmul(inputs, W_xh)
-            hh = tf.matmul(h, W_hh)
-
-            bn_xh = batch_norm(xh, self._is_training)
-            bn_hh = batch_norm(hh, self._is_training)
-
-            hidden = bn_xh + bn_hh + bias
-
-            # i = input_gate, j = new_input, f = forget_gate, o = output_gate
-            i, j, f, o = array_ops.split(value=hidden, num_or_size_splits=4, axis=1)
-
-            new_c = (c * sigmoid(f + self._forget_bias) + sigmoid(i) * self._activation(j))
-            bn_new_c = batch_norm(new_c, 'c', self._is_training)
-            new_h = self._activation(bn_new_c) * sigmoid(o)
-            new_state = rnn.LSTMStateTuple(new_c, new_h)
-
-            return new_h, new_state
-
-
-def orthogonal(shape):
-    flat_shape = (shape[0], np.prod(shape[1:]))
-    a = np.random.normal(0.0, 1.0, flat_shape)
-    u, _, v = np.linalg.svd(a, full_matrices=False)
-    q = u if u.shape == flat_shape else v
-    return q.reshape(shape)
-
-
-def bn_lstm_identity_initializer(scale):
-
-    def _initializer(shape, dtype=tf.float32, partition_info=None):
-        """
-        Ugly cause LSTM params calculated in one matrix multiply
-        """
-
-        size = shape[0]
-        # gate (j) is identity
-        t = np.zeros(shape)
-        t[:, size:size * 2] = np.identity(size) * scale
-        t[:, :size] = orthogonal([size, size])
-        t[:, size * 2:size * 3] = orthogonal([size, size])
-        t[:, size * 3:] = orthogonal([size, size])
-        return tf.constant(t, dtype=dtype)
-
-    return _initializer
-
-
-def orthogonal_initializer():
-    def _initializer(shape, dtype=tf.float32, partition_info=None):
-        return tf.constant(orthogonal(shape), dtype)
-    return _initializer
-
-
-class TextTARNN(object):
-    """A TARNN for text classification."""
+class TextTACNN(object):
+    """A TACNN for text classification."""
 
     def __init__(
             self, sequence_length, vocab_size, lstm_hidden_size, fc_hidden_size, attention_type,
-            embedding_size, embedding_type, l2_reg_lambda=0.0, pretrained_embedding=None):
+            embedding_size, embedding_type, num_filters, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
         self.input_x_content = tf.placeholder(tf.int32, [None, sequence_length[0]], name="input_x_content")

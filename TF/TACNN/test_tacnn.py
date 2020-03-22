@@ -7,8 +7,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from utils import checkmate as cm
-from utils import data_helpers as dh
+from TF.utils import checkmate as cm
+from TF.utils import data_helpers as dh
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Parameters
@@ -16,35 +16,31 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 logger = dh.logger_fn("tflog", "logs/test-{0}.log".format(time.asctime()))
 
-MODEL = input("☛ Please input the model file you want to test, it should be like(1490175368): ")
+MODEL = input("[Input] Please input the model file you want to test, it should be like(1490175368): ")
 
 while not (MODEL.isdigit() and len(MODEL) == 10):
-    MODEL = input("✘ The format of your input is illegal, it should be like(1490175368), please re-input: ")
-logger.info("✔︎ The format of your input is legal, now loading to next step...")
+    MODEL = input("[Warning] The format of your input is illegal, it should be like(1490175368), please re-input: ")
+logger.info("The format of your input is legal, now loading to next step...")
 
-TRAININGSET_DIR = '../data/Train.json'
-VALIDATIONSET_DIR = '../data/Validation.json'
-TESTSET_DIR = '../data/Test.json'
+TESTSET_DIR = '../../data/Test.json'
 MODEL_DIR = 'runs/' + MODEL + '/checkpoints/'
 BEST_MODEL_DIR = 'runs/' + MODEL + '/bestcheckpoints/'
 SAVE_DIR = 'results/' + MODEL
 
 # Data Parameters
-tf.flags.DEFINE_string("training_data_file", TRAININGSET_DIR, "Data source for the training data.")
-tf.flags.DEFINE_string("validation_data_file", VALIDATIONSET_DIR, "Data source for the validation data")
 tf.flags.DEFINE_string("test_data_file", TESTSET_DIR, "Data source for the test data")
 tf.flags.DEFINE_string("checkpoint_dir", MODEL_DIR, "Checkpoint directory from training run")
 tf.flags.DEFINE_string("best_checkpoint_dir", BEST_MODEL_DIR, "Best checkpoint directory from training run")
 
 # Model Hyperparameters
 tf.flags.DEFINE_string("pad_seq_len", "350,15,10", "Recommended padding Sequence length of data (depends on the data)")
+tf.flags.DEFINE_string("attention_type", "mlp", "Type of Attention ('normal', 'cosine', 'mlp')")
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
 tf.flags.DEFINE_integer("embedding_type", 1, "The embedding type (default: 1)")
-tf.flags.DEFINE_integer("lstm_hidden_size", 200, "Hidden size for bi-lstm layer(default: 256)")
-tf.flags.DEFINE_integer("fc_hidden_size", 400, "Hidden size for fully connected layer (default: 1024)")
+tf.flags.DEFINE_integer("lstm_hidden_size", 256, "Hidden size for bi-lstm layer(default: 256)")
+tf.flags.DEFINE_integer("fc_hidden_size", 1024, "Hidden size for fully connected layer (default: 1024)")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_float("threshold", 0.5, "Threshold for prediction classes (default: 0.5)")
 
 # Test Parameters
 tf.flags.DEFINE_integer("batch_size", 256, "Batch Size (default: 1)")
@@ -61,29 +57,29 @@ logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__g
                                 for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
 
 
-def test_rmidp():
-    """Test RMIDP model."""
+def test_tacnn():
+    """Test TACNN model."""
 
     # Load data
-    logger.info("✔︎ Loading data...")
+    logger.info("Loading data...")
     logger.info("Recommended padding Sequence length is: {0}".format(FLAGS.pad_seq_len))
 
-    logger.info("✔︎ Test data processing...")
+    logger.info("Test data processing...")
     test_data = dh.load_data_and_labels(FLAGS.test_data_file, FLAGS.embedding_dim, data_aug_flag=False)
 
-    logger.info("✔︎ Test data padding...")
+    logger.info("Test data padding...")
     x_test_content, x_test_question, x_test_option, y_test = dh.pad_data(test_data, FLAGS.pad_seq_len)
 
-    # Load rmidp model
-    BEST_OR_LATEST = input("☛ Load Best or Latest Model?(B/L): ")
+    # Load tacnn model
+    BEST_OR_LATEST = input("Load Best or Latest Model?(B/L): ")
 
     while not (BEST_OR_LATEST.isalpha() and BEST_OR_LATEST.upper() in ['B', 'L']):
         BEST_OR_LATEST = input("✘ The format of your input is illegal, please re-input: ")
     if BEST_OR_LATEST.upper() == 'B':
-        logger.info("✔︎ Loading best model...")
+        logger.info("Loading best model...")
         checkpoint_file = cm.get_best_checkpoint(FLAGS.best_checkpoint_dir, select_maximum_value=True)
     else:
-        logger.info("✔︎ Loading latest model...")
+        logger.info("Loading latest model...")
         checkpoint_file = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
     logger.info(checkpoint_file)
 
@@ -117,7 +113,7 @@ def test_rmidp():
             # Save the .pb model file
             output_graph_def = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def,
                                                                             output_node_names.split("|"))
-            tf.train.write_graph(output_graph_def, "graph", "graph-rmidp-{0}.pb".format(MODEL), as_text=False)
+            tf.train.write_graph(output_graph_def, "graph", "graph-tacnn-{0}.pb".format(MODEL), as_text=False)
 
             # Generate batches for one epoch
             batches = dh.batch_iter(list(zip(x_test_content, x_test_question, x_test_option, y_test)),
@@ -158,8 +154,8 @@ def test_rmidp():
 
             test_loss = float(test_loss / test_counter)
 
-            logger.info("☛ All Test Dataset: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {3:g} | R2 {4:g}".
-                        format(test_loss, pcc, doa, rmse, r2))
+            logger.info("All Test Dataset: Loss {0:g} | PCC {1:g} | DOA {2:g} | RMSE {3:g} | R2 {4:g}"
+                        .format(test_loss, pcc, doa, rmse, r2))
 
             # Save the prediction result
             if not os.path.exists(SAVE_DIR):
@@ -167,8 +163,8 @@ def test_rmidp():
             dh.create_prediction_file(output_file=SAVE_DIR + "/predictions.json", all_id=test_data.id,
                                       all_labels=true_labels, all_predict_scores=predicted_scores)
 
-    logger.info("✔︎ Done.")
+    logger.info("All Done.")
 
 
 if __name__ == '__main__':
-    test_rmidp()
+    test_tacnn()
