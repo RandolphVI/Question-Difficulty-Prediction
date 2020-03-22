@@ -5,13 +5,13 @@ import sys
 import time
 import tensorflow as tf
 
-from Sklearn.utils import data_process as dp
+from TMLA.utils import data_process as dp
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.externals import joblib
 
 logger = dp.logger_fn("dtr-log", "dtr/train-{0}.log".format(time.asctime()))
 
-TRAININGSET_DIR = '../../data/Train_BOW.json'
+TRAININGSET_DIR = '../../data/Train_BOW_sample.json'
 MODEL_DIR = 'dtr_model.m'
 
 # Data Parameters

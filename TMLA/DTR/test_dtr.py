@@ -5,13 +5,13 @@ import sys
 import time
 import tensorflow as tf
 
-from Sklearn.utils import data_process as dp
+from TMLA.utils import data_process as dp
 from sklearn.externals import joblib
 from sklearn.metrics import mean_squared_error, r2_score
 
 logger = dp.logger_fn("dtr-log", "dtr/test-{0}.log".format(time.asctime()))
 
-TEST_DIR = '../../data/Test_BOW.json'
+TEST_DIR = '../../data/Test_BOW_sample.json'
 MODEL_DIR = 'dtr_model.m'
 
 # Data Parameters

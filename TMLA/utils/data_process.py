@@ -98,7 +98,7 @@ def evaluation(test_y, pred_y):
 
 
 if __name__ == '__main__':
-    # create_word_dict('../data/data.json', '../data/word.pickle')
-    # create_bow_feature('../data/Train.json', '../data/word.pickle', '../data/Train_BOW.json')
-    # create_bow_feature('../data/Test.json', '../data/word.pickle', '../data/Test_BOW.json')
+    # create_word_dict('../../data/data.json', '../../data/word.pickle')
+    # create_bow_feature('../../data/Train_sample.json', '../../data/word.pickle', '../../data/Train_BOW_sample.json')
+    # create_bow_feature('../../data/Test_sample.json', '../../data/word.pickle', '../../data/Test_BOW_sample.json')
     pass

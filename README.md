@@ -27,7 +27,7 @@ The project structure is below:
 
 ```text
 .
-├── Sklearn
+├── TMLA(Traditional Machine Learning Algorithms)
 │   ├── DTR
 │   ├── LR
 │   ├── SVM
