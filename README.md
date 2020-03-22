@@ -23,6 +23,8 @@ Therefore, it is an urgent issue to automatically predict question difficulty wi
 
 ## Project
 
+The project structure is below:
+
 ```text
 .
 ├── Sklearn
@@ -36,23 +38,24 @@ Therefore, it is an urgent issue to automatically predict question difficulty wi
 │   ├── H-MIDP
 │   ├── R-MIDP
 │   ├── TARNN
-│   │   ├── test_tarnn.py
-│   │   ├── text_tarnn.py
-│   │   └── train_tarnn.py
 │   └── utils
-│       ├── checkmate.py
-│       └── data_helpers.py
 ├── PyTorch
 │   ├── C-MIDP
 │   ├── H-MIDP
 │   ├── R-MIDP
 │   ├── TARNN
+│   │   ├── test_tarnn.py
+│   │   ├── text_tarnn.py
+│   │   └── train_tarnn.py
 │   └── utils
+│       └── data_helpers.py
 ├── data
-│   ├── word2vec_300.txt
+│   ├── word2vec_300.txt [Need Download]
 │   ├── test_sample.json
 │   ├── train_sample.json
-│   └── validation_sample.json
+│   ├── validation_sample.json
+│   ├── Train_BOW_sample.json
+│   └── Test_BOW_sample.json
 ├── LICENSE
 ├── README.md
 └── requirements.txt
