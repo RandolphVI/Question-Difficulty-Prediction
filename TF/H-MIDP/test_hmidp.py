@@ -4,7 +4,6 @@ __author__ = 'Randolph'
 import os
 import sys
 import time
-import numpy as np
 import tensorflow as tf
 
 from TF.utils import checkmate as cm

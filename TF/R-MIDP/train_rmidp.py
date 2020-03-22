@@ -5,7 +5,6 @@ import os
 import sys
 import time
 import logging
-import numpy as np
 import tensorflow as tf
 
 from tensorboard.plugins import projector
