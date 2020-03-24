@@ -8,7 +8,8 @@ The main objective of the project is to predict the difficulty of each given que
 ## Requirements
 
 - Python 3.6
-- Tensorflow 1.1 +
+- Tensorflow 1.14.0
+- PyTorch 1.4.0
 - Numpy
 - Gensim
 
