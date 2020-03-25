@@ -45,6 +45,7 @@ The project structure is below:
 │   ├── H-MIDP
 │   ├── R-MIDP
 │   ├── TARNN
+│   │   ├── param_parser.py
 │   │   ├── test_tarnn.py
 │   │   ├── text_tarnn.py
 │   │   └── train_tarnn.py
