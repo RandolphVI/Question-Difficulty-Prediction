@@ -3,6 +3,7 @@ __author__ = 'Randolph'
 
 import os
 import math
+import time
 import gensim
 import logging
 import json
@@ -10,14 +11,47 @@ import numpy as np
 
 from collections import OrderedDict
 from scipy import stats
+from texttable import Texttable
 from gensim.models import KeyedVectors
 from tflearn.data_utils import pad_sequences
 
-TEXT_DIR = '../../data/content.txt'
-METADATA_DIR = '../../data/metadata.tsv'
+
+def _option(pattern):
+    """
+    Get the option according to the pattern.
+    (pattern 0: Choose training or restore; pattern 1: Choose best or latest checkpoint.)
+
+    Args:
+        pattern: 0 for training step. 1 for testing step.
+    Returns:
+        The OPTION
+    Raises:
+        IOError: If the pattern is invalid
+    """
+    if pattern == 0:
+        OPTION = input("[Input] Train or Restore? (T/R): ")
+        while not (OPTION.upper() in ['T', 'R']):
+            OPTION = input("[Warning] The format of your input is illegal, please re-input: ")
+    if pattern == 1:
+        OPTION = input("Load Best or Latest Model? (B/L): ")
+        while not (OPTION.isalpha() and OPTION.upper() in ['B', 'L']):
+            OPTION = input("[Warning] The format of your input is illegal, please re-input: ")
+    else:
+        raise IOError("[Error] The pattern input is invalid.")
+    return OPTION.upper()
 
 
 def logger_fn(name, input_file, level=logging.INFO):
+    """
+    The Logger.
+
+    Args:
+        name: The name of the logger
+        input_file: The logger file path
+        level: The logger level
+    Returns:
+        The logger
+    """
     tf_logger = logging.getLogger(name)
     tf_logger.setLevel(level)
     log_dir = os.path.dirname(input_file)
@@ -30,17 +64,77 @@ def logger_fn(name, input_file, level=logging.INFO):
     return tf_logger
 
 
+def tab_printer(args, logger):
+    """
+    Function to print the logs in a nice tabular format.
+
+    Args:
+        args: Parameters used for the model.
+        logger: The logger
+    """
+    args = vars(args)
+    keys = sorted(args.keys())
+    t = Texttable()
+    t.add_rows([[k.replace("_", " ").capitalize(), args[k]] for k in keys])
+    t.add_rows([["Parameter", "Value"]])
+    logger.info('\n' + t.draw())
+
+
+def get_out_dir(option, logger):
+    """
+    Get the out dir.
+
+    Args:
+        option: Train or Restore
+        logger: The logger
+    Returns:
+        The output dir
+    Raises:
+        IOError: If the option file is invalid
+    """
+    if option == 'T':
+        timestamp = str(int(time.time()))
+        out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
+        logger.info("Writing to {0}\n".format(out_dir))
+    if option == 'R':
+        MODEL = input("[Input] Please input the checkpoints model you want to restore, "
+                      "it should be like (1490175368): ")  # The model you want to restore
+
+        while not (MODEL.isdigit() and len(MODEL) == 10):
+            MODEL = input("[Warning] The format of your input is illegal, please re-input: ")
+        out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", MODEL))
+        logger.info("Writing to {0}\n".format(out_dir))
+    else:
+        raise IOError("[Error] The option input is invalid.")
+    return out_dir
+
+
+def get_model_name():
+    """
+    Get the model name used for test.
+
+    Returns:
+        The model name
+    """
+    MODEL = input("[Input] Please input the model file you want to test, it should be like (1490175368): ")
+
+    while not (MODEL.isdigit() and len(MODEL) == 10):
+        MODEL = input("[Warning] The format of your input is illegal, "
+                      "it should be like (1490175368), please re-input: ")
+    return MODEL
+
+
 def create_prediction_file(output_file, all_id, all_labels, all_predict_scores):
     """
     Create the prediction file.
 
     Args:
         output_file: The all classes predicted results provided by network
-        all_id: The data record id info provided by class Data
-        all_labels: The all origin labels
-        all_predict_scores: The all predict scores by threshold
+        all_id: The data record id
+        all_labels: The true labels
+        all_predict_scores: The predict scores
     Raises:
-        IOError: If the prediction file is not a <.json> file
+        IOError: If the prediction file is not a .json file
     """
     if not output_file.endswith('.json'):
         raise IOError("[Error] The prediction file is not a json file."
@@ -59,6 +153,15 @@ def create_prediction_file(output_file, all_id, all_labels, all_predict_scores):
 
 
 def evaluation(true_label, pred_label):
+    """
+    Calculate the PCC & DOA.
+
+    Args:
+        true_label: The true labels
+        pred_label: The predicted labels
+    Returns:
+        The value of PCC & DOA
+    """
     test_y = []
     pred_y = []
     for i in true_label:
@@ -91,18 +194,16 @@ def evaluation(true_label, pred_label):
     return pcc, doa
 
 
-def create_metadata_file(embedding_size, output_file=METADATA_DIR):
+def create_metadata_file(word2vec_file, output_file):
     """
-    Create the metadata file based on the corpus file(Use for the Embedding Visualization later).
+    Create the metadata file based on the corpus file (Used for the Embedding Visualization later).
 
     Args:
-        embedding_size: The embedding size
-        output_file: The metadata file (default: 'metadata.tsv')
+        word2vec_file: The word2vec file
+        output_file: The metadata file path
     Raises:
         IOError: If word2vec model file doesn't exist
     """
-    word2vec_file = '../../data/word2vec_' + str(embedding_size) + '.txt'
-
     if not os.path.isfile(word2vec_file):
         raise IOError("[Error] The word2vec file doesn't exist.")
 
@@ -119,19 +220,18 @@ def create_metadata_file(embedding_size, output_file=METADATA_DIR):
                 fout.write(word[0] + '\n')
 
 
-def load_word2vec_matrix(embedding_size):
+def load_word2vec_matrix(embedding_size, word2vec_file):
     """
     Return the word2vec model matrix.
 
     Args:
         embedding_size: The embedding size
+        word2vec_file: The word2vec file
     Returns:
         The word2vec model matrix
     Raises:
         IOError: If word2vec model file doesn't exist
     """
-    word2vec_file = '../../data/word2vec_' + str(embedding_size) + '.txt'
-
     if not os.path.isfile(word2vec_file):
         raise IOError("[Error] The word2vec file doesn't exist. ")
 
@@ -148,13 +248,13 @@ def load_word2vec_matrix(embedding_size):
 def data_word2vec(input_file, word2vec_model):
     """
     Create the research data tokenindex based on the word2vec model file.
-    Return the class Data(includes the data tokenindex and data labels).
+    Return the class Data (includes the data tokenindex and data labels).
 
     Args:
         input_file: The research data
         word2vec_model: The word2vec model file
     Returns:
-        The class Data(includes the data tokenindex and data labels)
+        The Class _Data() (includes the data tokenindex and data labels)
     Raises:
         IOError: If the input file is not the .json file
     """
@@ -228,13 +328,13 @@ def data_word2vec(input_file, word2vec_model):
 
 def data_augmented(data, drop_rate=1.0):
     """
-    Data augmented.
+    Data augment.
 
     Args:
-        data: The Class Data()
+        data: The Class _Data()
         drop_rate: The drop rate
     Returns:
-        aug_data
+        The Class _AugData()
     """
     aug_num = data.number
     aug_id = data.id
@@ -300,23 +400,21 @@ def data_augmented(data, drop_rate=1.0):
     return _AugData()
 
 
-def load_data_and_labels(data_file, embedding_size, data_aug_flag):
+def load_data_and_labels(data_file, word2vec_file, data_aug_flag):
     """
     Load research data from files, splits the data into words and generates labels.
     Return split sentences, labels and the max sentence length of the research data.
 
     Args:
         data_file: The research data
-        embedding_size: The embedding size
+        word2vec_file: The word2vec file
         data_aug_flag: The flag of data augmented
     Returns:
         The class Data
     Raises:
         IOError: If word2vec model file doesn't exist
     """
-    word2vec_file = '../../data/word2vec_' + str(embedding_size) + '.txt'
-
-    # Load word2vec model file
+    # Load word2vec file
     if not os.path.isfile(word2vec_file):
         raise IOError("[Error] The word2vec file doesn't exist. ")
 
@@ -339,17 +437,16 @@ def pad_data(data, pad_seq_len):
 
     Args:
         data: The research data
-        pad_seq_len: The max sentence length of [content, question, option] text
+        pad_seq_len: The max sentence length of [content, question, option]
     Returns:
         pad_content: The padded data
         pad_question: The padded data
         pad_option: The padded data
         labels: The data labels
     """
-    pad_seq_len_list = list(map(int, pad_seq_len.split(',')))
-    pad_content = pad_sequences(data.content_index, maxlen=pad_seq_len_list[0], value=0.)
-    pad_question = pad_sequences(data.question_index, maxlen=pad_seq_len_list[1], value=0.)
-    pad_option = pad_sequences(data.option_index, maxlen=pad_seq_len_list[2], value=0.)
+    pad_content = pad_sequences(data.content_index, maxlen=pad_seq_len[0], value=0.)
+    pad_question = pad_sequences(data.question_index, maxlen=pad_seq_len[1], value=0.)
+    pad_option = pad_sequences(data.option_index, maxlen=pad_seq_len[2], value=0.)
     labels = [[float(label)] for label in data.labels]
     return pad_content, pad_question, pad_option, labels
 

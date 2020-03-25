@@ -15,8 +15,8 @@ class TextTARNN(object):
     """A TARNN for text classification."""
 
     def __init__(
-            self, sequence_length, vocab_size, lstm_hidden_size, fc_hidden_size, attention_type,
-            embedding_size, embedding_type, l2_reg_lambda=0.0, pretrained_embedding=None):
+            self, sequence_length, vocab_size, embedding_type, embedding_size, lstm_hidden_size, attention_type,
+            fc_hidden_size, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
         self.input_x_content = tf.placeholder(tf.int32, [None, sequence_length[0]], name="input_x_content")
