@@ -6,7 +6,7 @@ def parameter_parser():
     A method to parse up command line parameters.
     The default hyperparameters give good results without cross-validation.
     """
-    parser = argparse.ArgumentParser(description="Run TARNN.")
+    parser = argparse.ArgumentParser(description="Run Model.")
 
     # Data Parameters
     parser.add_argument("--train-file",
