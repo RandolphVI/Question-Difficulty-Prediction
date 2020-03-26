@@ -45,11 +45,11 @@ The project structure is below:
 │   ├── H-MIDP
 │   ├── R-MIDP
 │   ├── TARNN
-│   │   ├── param_parser.py
 │   │   ├── test_tarnn.py
 │   │   ├── text_tarnn.py
 │   │   └── train_tarnn.py
 │   └── utils
+│       ├── param_parser.py
 │       └── data_helpers.py
 ├── data
 │   ├── word2vec_300.txt [Need Download]
