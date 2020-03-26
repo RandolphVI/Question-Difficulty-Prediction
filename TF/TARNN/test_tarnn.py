@@ -12,10 +12,10 @@ logging.getLogger('tensorflow').disabled = True
 import tensorflow as tf
 from utils import checkmate as cm
 from utils import data_helpers as dh
-from param_parser import parameter_parser
+from utils import param_parser as parser
 from sklearn.metrics import mean_squared_error, r2_score
 
-args = parameter_parser()
+args = parser.parameter_parser()
 MODEL = dh.get_model_name()
 logger = dh.logger_fn("tflog", "logs/Test-{0}.log".format(time.asctime()))
 

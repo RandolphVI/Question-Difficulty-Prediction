@@ -60,6 +60,21 @@ def parameter_parser():
                         default=200,
                         help="Dimensionality of Attention Neurons. (default: 200)")
 
+    parser.add_argument("--filter-size",
+                        type=list,
+                        default=[3, 3],
+                        help="Filter sizes. (default: 3)")
+
+    parser.add_argument("--num-filters",
+                        type=list,
+                        default=[200, 400],
+                        help="Number of filters per filter size. (default: 128)")
+
+    parser.add_argument("--pooling-size",
+                        type=int,
+                        default=3,
+                        help="Pooling sizes. (default: 3)")
+
     parser.add_argument("--lstm-dim",
                         type=int,
                         default=8,

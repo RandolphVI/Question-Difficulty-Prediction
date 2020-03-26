@@ -13,11 +13,11 @@ import tensorflow as tf
 from text_tarnn import TextTARNN
 from utils import checkmate as cm
 from utils import data_helpers as dh
-from param_parser import parameter_parser
+from utils import param_parser as parser
 from tensorboard.plugins import projector
 from sklearn.metrics import mean_squared_error, r2_score
 
-args = parameter_parser()
+args = parser.parameter_parser()
 OPTION = dh._option(pattern=0)
 logger = dh.logger_fn("tflog", "logs/{0}-{1}.log".format('Train' if OPTION == 'T' else 'Restore', time.asctime()))
 

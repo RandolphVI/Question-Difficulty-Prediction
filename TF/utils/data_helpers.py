@@ -25,8 +25,6 @@ def _option(pattern):
         pattern: 0 for training step. 1 for testing step.
     Returns:
         The OPTION
-    Raises:
-        IOError: If the pattern is invalid
     """
     if pattern == 0:
         OPTION = input("[Input] Train or Restore? (T/R): ")
@@ -36,8 +34,6 @@ def _option(pattern):
         OPTION = input("Load Best or Latest Model? (B/L): ")
         while not (OPTION.isalpha() and OPTION.upper() in ['B', 'L']):
             OPTION = input("[Warning] The format of your input is illegal, please re-input: ")
-    else:
-        raise IOError("[Error] The pattern input is invalid.")
     return OPTION.upper()
 
 
@@ -89,8 +85,6 @@ def get_out_dir(option, logger):
         logger: The logger
     Returns:
         The output dir
-    Raises:
-        IOError: If the option file is invalid
     """
     if option == 'T':
         timestamp = str(int(time.time()))
@@ -104,8 +98,6 @@ def get_out_dir(option, logger):
             MODEL = input("[Warning] The format of your input is illegal, please re-input: ")
         out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", MODEL))
         logger.info("Writing to {0}\n".format(out_dir))
-    else:
-        raise IOError("[Error] The option input is invalid.")
     return out_dir
 
 

@@ -4,91 +4,55 @@ __author__ = 'Randolph'
 import os
 import sys
 import time
-import tensorflow as tf
+import logging
 
-from TF.utils import checkmate as cm
-from TF.utils import data_helpers as dh
+sys.path.append('../')
+logging.getLogger('tensorflow').disabled = True
+
+import tensorflow as tf
+from utils import checkmate as cm
+from utils import data_helpers as dh
+from utils import param_parser as parser
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Parameters
-# ==================================================
+args = parser.parameter_parser()
+MODEL = dh.get_model_name()
+logger = dh.logger_fn("tflog", "logs/Test-{0}.log".format(time.asctime()))
 
-logger = dh.logger_fn("tflog", "logs/test-{0}.log".format(time.asctime()))
-
-MODEL = input("[Input] Please input the model file you want to test, it should be like(1490175368): ")
-
-while not (MODEL.isdigit() and len(MODEL) == 10):
-    MODEL = input("[Warning] The format of your input is illegal, it should be like(1490175368), please re-input: ")
-logger.info("The format of your input is legal, now loading to next step...")
-
-TESTSET_DIR = '../../data/Test.json'
-MODEL_DIR = 'runs/' + MODEL + '/checkpoints/'
-BEST_MODEL_DIR = 'runs/' + MODEL + '/bestcheckpoints/'
-SAVE_DIR = 'results/' + MODEL
-
-# Data Parameters
-tf.flags.DEFINE_string("test_data_file", TESTSET_DIR, "Data source for the test data")
-tf.flags.DEFINE_string("checkpoint_dir", MODEL_DIR, "Checkpoint directory from training run")
-tf.flags.DEFINE_string("best_checkpoint_dir", BEST_MODEL_DIR, "Best checkpoint directory from training run")
-
-# Model Hyperparameters
-tf.flags.DEFINE_string("pad_seq_len", "350,15,10", "Recommended padding Sequence length of data (depends on the data)")
-tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
-tf.flags.DEFINE_integer("embedding_type", 1, "The embedding type (default: 1)")
-tf.flags.DEFINE_integer("fc_hidden_size", 400, "Hidden size for fully connected layer (default: 1024)")
-tf.flags.DEFINE_string("filter_sizes", "3,3", "Comma-separated filter sizes (default: '3')")
-tf.flags.DEFINE_string("num_filters", "200,400", "Comma-separated number of filters per filter size (default: 128)")
-tf.flags.DEFINE_integer("pooling_size", 3, "Pooling sizes (default: '3')")
-tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
-tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-
-# Test Parameters
-tf.flags.DEFINE_integer("batch_size", 256, "Batch Size (default: 1)")
-
-# Misc Parameters
-tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
-tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
-tf.flags.DEFINE_boolean("gpu_options_allow_growth", True, "Allow gpu options growth")
-
-FLAGS = tf.flags.FLAGS
-FLAGS(sys.argv)
-dilim = '-' * 100
-logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
-                                for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
+CPT_DIR = 'runs/' + MODEL + '/checkpoints/'
+BEST_CPT_DIR = 'runs/' + MODEL + '/bestcheckpoints/'
+SAVE_DIR = 'output/' + MODEL
 
 
 def test_cmidp():
     """Test CMIDP model."""
+    # Print parameters used for the model
+    dh.tab_printer(args, logger)
 
     # Load data
     logger.info("Loading data...")
-    logger.info("Recommended padding Sequence length is: {0}".format(FLAGS.pad_seq_len))
+    logger.info("Data processing...")
+    test_data = dh.load_data_and_labels(args.test_file, args.word2vec_file, data_aug_flag=False)
 
-    logger.info("Test data processing...")
-    test_data = dh.load_data_and_labels(FLAGS.test_data_file, FLAGS.embedding_dim, data_aug_flag=False)
-
-    logger.info("Test data padding...")
-    x_test_content, x_test_question, x_test_option, y_test = dh.pad_data(test_data, FLAGS.pad_seq_len)
+    logger.info("Data padding...")
+    x_test_content, x_test_question, x_test_option, y_test = dh.pad_data(test_data, args.pad_seq_len)
 
     # Load cmidp model
-    BEST_OR_LATEST = input("Load Best or Latest Model? (B/L): ")
-
-    while not (BEST_OR_LATEST.isalpha() and BEST_OR_LATEST.upper() in ['B', 'L']):
-        BEST_OR_LATEST = input("✘ The format of your input is illegal, please re-input: ")
-    if BEST_OR_LATEST.upper() == 'B':
+    OPTION = dh._option(pattern=1)
+    if OPTION == 'B':
         logger.info("Loading best model...")
-        checkpoint_file = cm.get_best_checkpoint(FLAGS.best_checkpoint_dir, select_maximum_value=True)
+        checkpoint_file = cm.get_best_checkpoint(BEST_CPT_DIR, select_maximum_value=True)
     else:
         logger.info("Loading latest model...")
-        checkpoint_file = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
+        checkpoint_file = tf.train.latest_checkpoint(CPT_DIR)
     logger.info(checkpoint_file)
 
     graph = tf.Graph()
     with graph.as_default():
         session_conf = tf.ConfigProto(
-            allow_soft_placement=FLAGS.allow_soft_placement,
-            log_device_placement=FLAGS.log_device_placement)
-        session_conf.gpu_options.allow_growth = FLAGS.gpu_options_allow_growth
+            allow_soft_placement=args.allow_soft_placement,
+            log_device_placement=args.log_device_placement)
+        session_conf.gpu_options.allow_growth = args.gpu_options_allow_growth
         sess = tf.Session(config=session_conf)
         with sess.as_default():
             # Load the saved meta graph and restore variables
@@ -117,7 +81,7 @@ def test_cmidp():
 
             # Generate batches for one epoch
             batches = dh.batch_iter(list(zip(x_test_content, x_test_question, x_test_option, y_test)),
-                                    FLAGS.batch_size, 1, shuffle=False)
+                                    args.batch_size, 1, shuffle=False)
 
             test_counter, test_loss = 0, 0.0
 
