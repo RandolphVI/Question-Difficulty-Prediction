@@ -26,7 +26,7 @@ def train_hmidp():
     """Training HMIDP model."""
     # Print parameters used for the model
     dh.tab_printer(args, logger)
-    
+
     # Load sentences, labels, and training parameters
     logger.info("Loading data...")
     logger.info("Data processing...")
