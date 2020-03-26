@@ -77,7 +77,7 @@ def parameter_parser():
 
     parser.add_argument("--lstm-dim",
                         type=int,
-                        default=8,
+                        default=128,
                         help="Dimensionality for LSTM Neurons. (default: 256)")
 
     parser.add_argument("--lstm-layers",
