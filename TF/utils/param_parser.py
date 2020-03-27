@@ -32,7 +32,7 @@ def parameter_parser():
     parser.add_argument("--word2vec-file",
                         nargs="?",
                         default="../../data/word2vec_300.txt",
-                        help="Word2vec file for embedding characters (the dim need to be the same as embedding dim).")
+                        help="Word2vec file for embedding characters. (the dim need to be the same as embedding dim).")
 
     # Model Hyperparameters
     parser.add_argument("--pad-seq-len",
@@ -93,23 +93,23 @@ def parameter_parser():
     parser.add_argument("--dropout-rate",
                         type=float,
                         default=0.5,
-                        help="Dropout keep probability (default: 0.5)")
+                        help="Dropout keep probability. (default: 0.5)")
 
     # Training Parameters
     parser.add_argument("--epochs",
                         type=int,
                         default=30,
-                        help="Number of training epochs. Default is 20.")
+                        help="Number of training epochs. (default: 20)")
 
     parser.add_argument("--batch-size",
                         type=int,
                         default=128,
-                        help="Batch Size. Default is 128.")
+                        help="Batch Size. (default: 128)")
 
     parser.add_argument("--learning-rate",
                         type=float,
                         default=0.001,
-                        help="Learning rate. Default is 0.001.")
+                        help="Learning rate. (default: 0.001)")
 
     parser.add_argument("--decay-rate",
                         type=float,
