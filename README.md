@@ -65,17 +65,47 @@ The project structure is below:
 
 ## Data
 
-See data format in `data` folder which including the data sample files.
+See data format in `/data` folder which including the data sample files. For example:
+
+```json
+{"id": "6", "content": ["year", "ruined", "summer", "vacation-a", "two-week", "vacation", "wife", "family", "cabin", "lake", "northern", "ontario", "located", "boundary", "canada-by", "bringing", "modern", "convenience", "wa", "convenient", "good", "ipad", "admiring", "beauty", "nature", "checked", "e-mail", "paddling", "canoe", "twitter", "feed", "devouring", "great", "amusing", "stuck", "workday", "diet", "newspaper", "morning", "wa", "problem", "wa", "behaving", "office", "sticking", "unending", "news", "cycle", "body", "wa", "vacation", "head", "wasnt", "year", "made", "mind", "social", "medium", "experiment", "reverse", "withdrawal", "internet", "manage", "unplug", "knew", "wouldnt", "easy", "im", "good", "self-denial", "wa", "determined", "started", "physical", "restraint", "handing", "ipad", "wife", "helpfully", "announced", "wa", "read", "book", "club", "inclined", "relinquish", "tablet", "moment", "stroke", "luck", "cell", "phone", "signal", "canadian", "cabin", "wa", "spottier", "past", "making", "attempt", "cheating", "experience", "frustration", "wa", "trapped", "forced", "comply", "good", "intention", "largely", "cut", "e-mail", "twitter", "favorite", "newspaper", "website", "connect", "world", "radio-and", "radio", "listen", "choice", "planned", "read", "book", "experienced", "criminal", "plot", "street", "los", "angeles", "cutthroat", "battle", "cancer", "lab", "psyche", "london", "social", "butterfly", "magazine", "read", "im", "claiming", "cut", "internet", "completely", "day", "biked", "nearest", "town", "reward", "sat", "park", "bench", "front", "public", "library", "wi-fi", "back", "cabin", "suffered", "slow", "dial-up", "connection", "day", "check", "e-mail", "tale", "self-denial", "ha", "happy", "ending-for", "determination", "deep", "breathing", "strong", "support", "wife", "succeeded", "vacation", "struggle", "internet", "realizing", "finally", "wa", "ipad", "wa", "problem", "knew", "passed", "starbucks", "wife", "asked", "wanted", "stop", "wi-fi", "dont", "sound", "pleased", "return", "post-vacation", "situation", "test", "begin", "stay", "wagon", "im", "back", "work", "time", "compulsion", "whats", "overwhelming", "crucial", "livelihood", "intention", "giving", "membership", "cult", "immediacy", "hope", "resist", "temptation", "reflexively", "check", "e-mail", "minute", "lead", "long", "im", "checking", "twitter", "feed", "website", "vacation", "supposed", "reset", "brain", "productive", "hoping", "worked"], "question": ["doe", "underlined", "word", "restraint"], "pos_text": ["calm", "controlled", "behavior"], "neg_text": ["relaxing", "move", "strong", "determination", "unshakable", "faith"], "diff": 0.550373134328}
+```
+
+- **"id"**: just the id.
+- **"content"**: the word segment of the content.
+- **"question"**: The word segment of the question.
+- **"pos_text"**: The word segment of the correct option.
+- **"neg_text"**: The word segment of the wrong options.
+- **"diff"**: The difficulty of the question.
+
+### Text Segment
+
+1. You can use `nltk` package if you are going to deal with the English text data.
+
+2. You can use `jieba` package if you are going to deal with the Chinese text data.
 
 ### Data Format
 
 This repository can be used in other similiar datasets in two ways:
 
-1. Modify your datasets into the same format of the sample.
-2. Modify the data preprocess code in `data_helpers.py`.
+1. Modify your datasets into the same format of [the sample](https://github.com/RandolphVI/Question-Difficulty-Prediction/tree/master/data).
+2. Modify the data preprocessing code in `data_helpers.py`.
 
 
 Anyway, it should depend on what your data and task are.
+
+### Pre-trained Word Vectors
+
+**You can download the [Word2vec model file](https://drive.google.com/open?id=1QQhm6vKdZmEHaVYvuFbA5Yj6RoVlOhzh) (dim=300). Make sure they are unzipped and under the `/data` folder.**
+
+You can pre-training your word vectors (based on your corpus) in many ways:
+- Use `gensim` package to pre-train data.
+- Use `glove` tools to pre-train data.
+- Even can use a **fasttext** network to pre-train data.
+
+## Usage
+
+See [Usage-TF](https://github.com/RandolphVI/Question-Difficulty-Prediction/blob/master/Usage-TF.md) & [Usage-PyTorch].
 
 ## Network Structure
 
