@@ -14,11 +14,11 @@
 ### Model option
 
 ```
-  --pad-seq-len             LIST	Padding Sequence length of data.        Depends on data.
+  --pad-seq-len             LIST    Padding Sequence length of data.        Depends on data.
   --embedding-type          INT     The embedding type.                     Default is 1.
   --embedding-dim           INT     Dim of character embedding.             Default is 300.
   --filter-sizes            LIST    Filter sizes.                           Default is [3,3].
-  --num-filters             LIST	Number of filters per filter size.      Default is [200,400].  
+  --num-filters             LIST    Number of filters per filter size.      Default is [200,400].  
   --pooling-size            INT     Pooling size.                           Default is 3.
   --lstm-dim                INT     Dim of LSTM neurons.                    Default is 256.
   --lstm-layers             INT     Number of LSTM layers.                  Defatul is 1.
