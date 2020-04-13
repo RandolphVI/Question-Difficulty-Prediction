@@ -105,7 +105,7 @@ You can pre-training your word vectors (based on your corpus) in many ways:
 
 ## Usage
 
-See [Usage-TF](https://github.com/RandolphVI/Question-Difficulty-Prediction/blob/master/Usage-TF.md) & [Usage-PyTorch].
+See [Usage-TF](https://github.com/RandolphVI/Question-Difficulty-Prediction/blob/master/Usage-TF.md) & [Usage-PyTorch](https://github.com/RandolphVI/Question-Difficulty-Prediction/blob/master/Usage-PyTorch.md).
 
 ## Network Structure
 
