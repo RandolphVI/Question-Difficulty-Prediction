@@ -212,12 +212,11 @@ def create_metadata_file(word2vec_file, output_file):
                 fout.write(word[0] + '\n')
 
 
-def load_word2vec_matrix(embedding_size, word2vec_file):
+def load_word2vec_matrix(word2vec_file):
     """
     Return the word2vec model matrix.
 
     Args:
-        embedding_size: The embedding size
         word2vec_file: The word2vec file
     Returns:
         The word2vec model matrix
@@ -228,13 +227,14 @@ def load_word2vec_matrix(embedding_size, word2vec_file):
         raise IOError("[Error] The word2vec file doesn't exist. ")
 
     model = KeyedVectors.load_word2vec_format(open(word2vec_file, 'r'), binary=False, unicode_errors='replace')
-    vocab_size = len(model.wv.vocab.items())
+    vocab_size = model.wv.vectors.shape[0]
+    embedding_size = model.vector_size
     vocab = dict([(k, v.index) for k, v in model.wv.vocab.items()])
-    vector = np.zeros([vocab_size, embedding_size])
+    embedding_matrix = np.zeros([vocab_size, embedding_size])
     for key, value in vocab.items():
         if key is not None:
-            vector[value] = model[key]
-    return vocab_size, vector
+            embedding_matrix[value] = model[key]
+    return vocab_size, embedding_size, embedding_matrix
 
 
 def data_word2vec(input_file, word2vec_model):
@@ -399,7 +399,7 @@ def load_data_and_labels(data_file, word2vec_file, data_aug_flag):
 
     Args:
         data_file: The research data
-        word2vec_file: The word2vec file
+        word2vec_file: The word2vec model file
         data_aug_flag: The flag of data augmented
     Returns:
         The class _Data()
@@ -471,3 +471,5 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield shuffled_data[start_index:end_index]
+
+load_word2vec_matrix('../../data/word2vec_300.txt')

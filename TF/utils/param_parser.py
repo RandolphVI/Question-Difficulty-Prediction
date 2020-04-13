@@ -60,7 +60,7 @@ def parameter_parser():
                         default=200,
                         help="Dimensionality of Attention Neurons. (default: 200)")
 
-    parser.add_argument("--filter-size",
+    parser.add_argument("--filter-sizes",
                         type=list,
                         default=[3, 3],
                         help="Filter sizes. (default: 3)")
