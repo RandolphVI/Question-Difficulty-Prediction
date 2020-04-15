@@ -56,7 +56,7 @@ def train_hmidp():
                 filter_sizes=args.filter_sizes,
                 num_filters=args.num_filters,
                 pooling_size=args.pooling_size,
-                lstm_hidden_size=args.lstm_dim,
+                rnn_hidden_size=args.rnn_dim,
                 fc_hidden_size=args.fc_dim,
                 l2_reg_lambda=args.l2_lambda,
                 pretrained_embedding=pretrained_word2vec_matrix)

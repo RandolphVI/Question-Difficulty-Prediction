@@ -4,18 +4,12 @@ __author__ = 'Randolph'
 import numpy as np
 import tensorflow as tf
 
-from tensorflow import tanh
-from tensorflow import sigmoid
-from tensorflow.contrib import rnn
-from tensorflow.python.ops import array_ops
-from tensorflow.contrib.layers import batch_norm
-
 
 class TextTARNN(object):
     """A TARNN for text classification."""
 
     def __init__(
-            self, sequence_length, vocab_size, embedding_type, embedding_size, lstm_hidden_size, attention_type,
+            self, sequence_length, vocab_size, embedding_type, embedding_size, rnn_hidden_size, attention_type,
             fc_hidden_size, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
@@ -28,44 +22,55 @@ class TextTARNN(object):
 
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
 
-        def _bi_lstm_layer(input_x, name=""):
-            # Bi-LSTM Layer
-            with tf.variable_scope(name + "Bi_lstm", reuse=tf.AUTO_REUSE):
-                lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(lstm_hidden_size)  # forward direction cell
-                lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(lstm_hidden_size)  # backward direction cell
+        def _bi_gru_layer(input_x, name=""):
+            # Bi-GRU Layer
+            with tf.variable_scope(name + "Bi_gru", reuse=tf.AUTO_REUSE):
+                gru_fw_cell = tf.nn.rnn_cell.GRUCell(rnn_hidden_size)  # forward direction cell
+                gru_bw_cell = tf.nn.rnn_cell.GRUCell(rnn_hidden_size)  # backward direction cell
                 if self.dropout_keep_prob is not None:
-                    lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_fw_cell, output_keep_prob=self.dropout_keep_prob)
-                    lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_bw_cell, output_keep_prob=self.dropout_keep_prob)
+                    gru_fw_cell = tf.nn.rnn_cell.DropoutWrapper(gru_fw_cell, output_keep_prob=self.dropout_keep_prob)
+                    gru_bw_cell = tf.nn.rnn_cell.DropoutWrapper(gru_bw_cell, output_keep_prob=self.dropout_keep_prob)
 
                 # Creates a dynamic bidirectional recurrent neural network
                 # shape of `outputs`: tuple -> (outputs_fw, outputs_bw)
-                # shape of `outputs_fw`: [batch_size, sequence_length, lstm_hidden_size]
+                # shape of `outputs_fw`: [batch_size, sequence_length, rnn_hidden_size]
 
                 # shape of `state`: tuple -> (outputs_state_fw, output_state_bw)
-                # shape of `outputs_state_fw`: tuple -> (c, h) c: memory cell; h: hidden state
-                outputs, state = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, input_x, dtype=tf.float32)
+                # shape of `outputs_state_fw`: [batch_size, rnn_hidden_size]
+                outputs, state = tf.nn.bidirectional_dynamic_rnn(gru_fw_cell, gru_bw_cell, input_x, dtype=tf.float32)
 
             # Concat output
-            # [batch_size, sequence_length, lstm_hidden_size * 2]
-            lstm_out = tf.concat(outputs, axis=2, name=name + "lstm_out")
+            # [batch_size, sequence_length, rnn_hidden_size * 2]
+            gru_out = tf.concat(outputs, axis=2, name=name + "gru_out")
 
-            # [batch_size, lstm_hidden_size * 2]
-            lstm_avg = tf.reduce_mean(lstm_out, axis=1, name=name + "lstm_avg_")
+            # [batch_size, rnn_hidden_size * 2]
+            gru_avg = tf.reduce_mean(gru_out, axis=1, name=name + "gru_avg_")
 
-            return lstm_out, lstm_avg
+            return gru_out, gru_avg
 
         def _attention(input_x, input_y, name=""):
             """
             Attention Layer.
             Args:
-                input_x: [batch_size, sequence_length_1, lstm_hidden_size * 2]
-                input_y: [batch_size, sequence_length_2, lstm_hidden_size * 2]
+                input_x: [batch_size, sequence_length_1, rnn_hidden_size * 2]
+                input_y: [batch_size, sequence_length_2, rnn_hidden_size * 2]
                 name: Scope name
             Returns:
-                attention_matrix: [batch_size, sequence_length_2, sequence_length_1]
-                attention_weight: [batch_size, num_classes, sequence_length]
-                attention_visual: [batch_size, sequence_length_1]
-                attention_out: [batch_size, lstm_hidden_size * 2]
+                'normal':
+                    attention_matrix: [batch_size, seq_len_2, seq_len_1]
+                    attention_weight: [batch_size, seq_len_2, seq_len_1]
+                    attention_visual: [batch_size, seq_len_1]
+                    attention_out: [batch_size, rnn_hidden_size * 2]
+                'cosine':
+                    attention_matrix: [batch_size, seq_len_2, seq_len_1]
+                    attention_weight: [batch_size, seq_len_2, seq_len_1]
+                    attention_visual: [batch_size, seq_len_1]
+                    attention_out: [batch_size, rnn_hidden_size * 2]
+                'mlp':
+                    attention_matrix: [batch_size, seq_len_1 + seq_len_2, seq_len_1]
+                    attention_weight: [batch_size, seq_len_1 + seq_len_2, seq_len_1]
+                    attention_visual: [batch_size, seq_len_1]
+                    attention_out: [batch_size, rnn_hidden_size * 2]
             """
             if attention_type == 'normal':
                 with tf.name_scope(name + "attention"):
@@ -92,25 +97,25 @@ class TextTARNN(object):
                 with tf.name_scope(name + "mlp_attention"):
                     x = tf.concat([input_x, input_y], axis=1)
                     num_units = x.get_shape().as_list()[-1]
-                    W = tf.Variable(tf.truncated_normal(shape=[num_units, num_units],
-                                                        stddev=0.1, dtype=tf.float32), name="W")
-                    b = tf.Variable(tf.constant(value=0.1, shape=[num_units], dtype=tf.float32), name="b")
-                    u = tf.Variable(tf.truncated_normal(shape=[num_units, 1],
-                                                        stddev=0.1, dtype=tf.float32), name="u")
+                    seq_len = input_x.get_shape().as_list()[-2]
+                    W_s1 = tf.Variable(tf.truncated_normal(shape=[num_units, seq_len],
+                                                           stddev=0.1, dtype=tf.float32), name="W_s1")
+                    W_s2 = tf.Variable(tf.truncated_normal(shape=[seq_len, seq_len],
+                                                           stddev=0.1, dtype=tf.float32), name="W_s2")
                     attention_matrix = tf.map_fn(
-                        fn=lambda x: tf.matmul(x, u),
+                        fn=lambda x: tf.matmul(x, W_s2),
                         elems=tf.tanh(
                             tf.map_fn(
-                                fn=lambda x: tf.nn.xw_plus_b(x, W, b),
+                                fn=lambda x: tf.matmul(x, W_s1),
                                 elems=x,
                                 dtype=tf.float32
                             )
                         )
                     )
                     attention_weight = tf.nn.softmax(attention_matrix, name="attention_matrix")
-                    attention_visual = tf.reduce_mean(attention_matrix, name="visual")
-                    attention_out = tf.multiply(attention_weight, x)
-                    attention_out = tf.reduce_sum(attention_out, axis=1)
+                    attention_visual = tf.reduce_mean(attention_matrix, axis=1, name="visual")
+                    attention_out = tf.matmul(attention_weight, input_x)
+                    attention_out = tf.reduce_mean(attention_out, axis=1)
             return attention_visual, attention_out
 
         def _fc_layer(input_x, name=""):
@@ -193,16 +198,16 @@ class TextTARNN(object):
             self.embedded_sentence_question = tf.nn.embedding_lookup(self.embedding, self.input_x_question)
             self.embedded_sentence_option = tf.nn.embedding_lookup(self.embedding, self.input_x_option)
 
-        self.lstm_out_content, self.lstm_avg_content = _bi_lstm_layer(self.embedded_sentence_content, name="content_")
-        self.lstm_out_question, self.lstm_avg_question = _bi_lstm_layer(self.embedded_sentence_question, name="question_")
-        self.lstm_out_option, self.lstm_avg_option = _bi_lstm_layer(self.embedded_sentence_option, name="option_")
+        self.gru_out_content, self.gru_avg_content = _bi_gru_layer(self.embedded_sentence_content, name="content_")
+        self.gru_out_question, self.gru_avg_question = _bi_gru_layer(self.embedded_sentence_question, name="question_")
+        self.gru_out_option, self.gru_avg_option = _bi_gru_layer(self.embedded_sentence_option, name="option_")
 
         # Attention Layer
-        self.visual_cq, self.attention_cq = _attention(self.lstm_out_content, self.lstm_out_question, name="cq_")
-        self.visual_oq, self.attention_oq = _attention(self.lstm_out_option, self.lstm_out_question, name="oq_")
+        self.visual_cq, self.attention_cq = _attention(self.gru_out_content, self.gru_out_question, name="cq_")
+        self.visual_oq, self.attention_oq = _attention(self.gru_out_option, self.gru_out_question, name="oq_")
 
         # attention_out: [batch_size, hidden_size * 2 * 3]
-        self.attention_out = tf.concat([self.attention_cq, self.lstm_avg_question, self.attention_oq], axis=1)
+        self.attention_out = tf.concat([self.attention_cq, self.gru_avg_question, self.attention_oq], axis=1)
 
         # Fully Connected Layer
         self.fc_out = _fc_layer(self.attention_out)

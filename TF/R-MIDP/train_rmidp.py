@@ -53,7 +53,7 @@ def train_rmidp():
                 vocab_size=VOCAB_SIZE,
                 embedding_type=args.embedding_type,
                 embedding_size=EMBEDDING_SIZE,
-                lstm_hidden_size=args.lstm_dim,
+                rnn_hidden_size=args.rnn_dim,
                 fc_hidden_size=args.fc_dim,
                 l2_reg_lambda=args.l2_lambda,
                 pretrained_embedding=pretrained_word2vec_matrix)

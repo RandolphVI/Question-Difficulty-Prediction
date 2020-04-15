@@ -10,7 +10,7 @@ class TextHMIDP(object):
 
     def __init__(
             self, sequence_length, vocab_size, embedding_type, embedding_size, filter_sizes, num_filters,
-            pooling_size, lstm_hidden_size, fc_hidden_size, l2_reg_lambda=0.0, pretrained_embedding=None):
+            pooling_size, rnn_hidden_size, fc_hidden_size, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
         self.input_x_content = tf.placeholder(tf.int32, [None, sequence_length[0]], name="input_x_content")
@@ -77,25 +77,25 @@ class TextHMIDP(object):
         def _bi_lstm(input_x, name=""):
             # Bi-LSTM Layer
             with tf.variable_scope(name + "Bi_lstm", reuse=tf.AUTO_REUSE):
-                lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(lstm_hidden_size)  # forward direction cell
-                lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(lstm_hidden_size)  # backward direction cell
+                lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden_size)  # forward direction cell
+                lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden_size)  # backward direction cell
                 if self.dropout_keep_prob is not None:
                     lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_fw_cell, output_keep_prob=self.dropout_keep_prob)
                     lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_bw_cell, output_keep_prob=self.dropout_keep_prob)
 
                 # Creates a dynamic bidirectional recurrent neural network
                 # shape of `outputs`: tuple -> (outputs_fw, outputs_bw)
-                # shape of `outputs_fw`: [batch_size, sequence_length, lstm_hidden_size]
+                # shape of `outputs_fw`: [batch_size, sequence_length, rnn_hidden_size]
 
                 # shape of `state`: tuple -> (outputs_state_fw, output_state_bw)
                 # shape of `outputs_state_fw`: tuple -> (c, h) c: memory cell; h: hidden state
                 outputs, state = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, input_x, dtype=tf.float32)
 
             # Concat output
-            # [batch_size, sequence_length, lstm_hidden_size * 2]
+            # [batch_size, sequence_length, rnn_hidden_size * 2]
             lstm_out = tf.concat(outputs, axis=2, name=name + "lstm_out")
 
-            # [batch_size, lstm_hidden_size * 2]
+            # [batch_size, rnn_hidden_size * 2]
             lstm_pooled = tf.reduce_max(lstm_out, axis=1, name=name + "lstm_pooled")
 
             return lstm_pooled
@@ -136,7 +136,7 @@ class TextHMIDP(object):
         self.conv_final_flat = tf.reshape(self.conv2_out, shape=[-1, num_filters[1]])
 
         # Bi-LSTM Layer
-        # bi_lstm_out: [batch_size, lstm_hidden_size * 2]
+        # bi_lstm_out: [batch_size, rnn_hidden_size * 2]
         self.bi_lstm_out = _bi_lstm(self.embedded_sentence_all, name="total_")
 
         # Concat

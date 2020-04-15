@@ -75,15 +75,15 @@ def parameter_parser():
                         default=3,
                         help="Pooling sizes. (default: 3)")
 
-    parser.add_argument("--lstm-dim",
+    parser.add_argument("--rnn-dim",
                         type=int,
                         default=128,
-                        help="Dimensionality for LSTM Neurons. (default: 256)")
+                        help="Dimensionality for RNN Neurons. (default: 256)")
 
-    parser.add_argument("--lstm-layers",
+    parser.add_argument("--rnn-layers",
                         type=int,
                         default=1,
-                        help="Number of LSTM Layers. (default: 1)")
+                        help="Number of RNN Layers. (default: 1)")
 
     parser.add_argument("--fc-dim",
                         type=int,
