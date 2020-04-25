@@ -18,7 +18,7 @@ from tensorboard.plugins import projector
 from sklearn.metrics import mean_squared_error, r2_score
 
 args = parser.parameter_parser()
-OPTION = dh._option(pattern=0)
+OPTION = dh.option(pattern=0)
 logger = dh.logger_fn("tflog", "logs/{0}-{1}.log".format('Train' if OPTION == 'T' else 'Restore', time.asctime()))
 
 

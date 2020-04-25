@@ -16,7 +16,7 @@ from gensim.models import KeyedVectors
 from tflearn.data_utils import pad_sequences
 
 
-def _option(pattern):
+def option(pattern):
     """
     Get the option according to the pattern.
     (pattern 0: Choose training or restore; pattern 1: Choose best or latest checkpoint.)
@@ -471,5 +471,3 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield shuffled_data[start_index:end_index]
-
-load_word2vec_matrix('../../data/word2vec_300.txt')

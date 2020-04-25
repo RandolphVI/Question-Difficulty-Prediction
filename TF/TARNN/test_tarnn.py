@@ -38,7 +38,7 @@ def test_tarnn():
     x_test_content, x_test_question, x_test_option, y_test = dh.pad_data(test_data, args.pad_seq_len)
 
     # Load tarnn model
-    OPTION = dh._option(pattern=1)
+    OPTION = dh.option(pattern=1)
     if OPTION == 'B':
         logger.info("Loading best model...")
         checkpoint_file = cm.get_best_checkpoint(BEST_CPT_DIR, select_maximum_value=True)
