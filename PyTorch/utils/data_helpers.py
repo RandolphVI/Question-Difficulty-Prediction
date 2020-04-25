@@ -5,12 +5,11 @@ import os
 import math
 import gensim
 import logging
-import shutil
 import json
 import torch
 import numpy as np
+import pandas as pd
 
-from collections import OrderedDict
 from scipy import stats
 from texttable import Texttable
 from gensim.models import KeyedVectors
@@ -68,32 +67,37 @@ def tab_printer(args, logger):
     logger.info('\n' + t.draw())
 
 
-def create_prediction_file(output_file, identifiers, predictions):
+def get_model_name():
+    """
+    Get the model name used for test.
+
+    Returns:
+        The model name
+    """
+    MODEL = input("[Input] Please input the model file you want to test, it should be like (1490175368): ")
+
+    while not (MODEL.isdigit() and len(MODEL) == 10):
+        MODEL = input("[Warning] The format of your input is illegal, "
+                      "it should be like (1490175368), please re-input: ")
+    return MODEL
+
+
+def create_prediction_file(save_dir, identifiers, predictions):
     """
     Create the prediction file.
 
     Args:
-        output_file: The all classes predicted results provided by network
+        save_dir: The all classes predicted results provided by network
         identifiers: The data record id
         predictions: The predict scores
-    Raises:
-        IOError: If the prediction file is not a .json file
     """
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    preds_file = os.path.abspath(os.path.join(save_dir, 'predictions.csv'))
     out = pd.DataFrame()
     out["id"] = identifiers
-    out["predictions"] = predictions
-    out.to_csv(self.args.prediction_path, index=None)
-    with open(output_file, 'w') as fout:
-        data_size = len(all_predict_scores)
-        for i in range(data_size):
-            labels = [float(i) for i in all_labels[i]]
-            predict_scores = [round(float(i), 4) for i in all_predict_scores[i]]
-            data_record = OrderedDict([
-                ('id', all_id[i]),
-                ('labels', labels),
-                ('predict_scores', predict_scores)
-            ])
-            fout.write(json.dumps(data_record, ensure_ascii=False) + '\n')
+    out["predictions"] = [round(float(i), 4) for i in predictions]
+    out.to_csv(preds_file, index=None)
 
 
 def evaluation(true_label, pred_label):
