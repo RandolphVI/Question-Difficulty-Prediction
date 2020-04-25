@@ -8,7 +8,7 @@ import torch
 
 sys.path.append('../')
 
-from layers import RMIDP, Loss
+from layers import HMIDP, Loss
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from utils import param_parser as parser
@@ -51,7 +51,7 @@ def test():
     VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix = dh.load_word2vec_matrix(args.word2vec_file)
 
     criterion = Loss()
-    model = RMIDP(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
+    model = HMIDP(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
     checkpoint_file = cm.get_best_checkpoint(CPT_DIR, select_maximum_value=False)
     checkpoint = torch.load(checkpoint_file)
     model.load_state_dict(checkpoint['model_state_dict'])

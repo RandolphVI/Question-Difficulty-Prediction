@@ -9,7 +9,7 @@ import torch.nn as nn
 
 sys.path.append('../')
 
-from layers import RMIDP, Loss
+from layers import HMIDP, Loss
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from utils import param_parser as parser
@@ -38,7 +38,7 @@ def create_input_data(record):
 
 
 def train():
-    """Training RMIDP model."""
+    """Training CMIDP model."""
     dh.tab_printer(args, logger)
 
     # Load sentences, labels, and training parameters
@@ -67,7 +67,7 @@ def train():
 
     # Init network
     logger.info("Init nn...")
-    net = RMIDP(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
+    net = HMIDP(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
 
     print("Model's state_dict:")
     for param_tensor in net.state_dict():
