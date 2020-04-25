@@ -4,7 +4,9 @@ __author__ = 'Randolph'
 import sys
 import time
 
-from TMLA.utils import data_process as dp
+sys.path.append('../')
+
+from utils import data_process as dp
 from sklearn.externals import joblib
 from sklearn.metrics import mean_squared_error, r2_score
 

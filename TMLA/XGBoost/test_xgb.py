@@ -14,7 +14,6 @@ from sklearn.metrics import mean_squared_error, r2_score
 logger = dp.logger_fn("xgb-log", "xgb/test-{0}.log".format(time.asctime()))
 
 # Data Parameters
-# TODO
 TEST_DIR = '../../data/Test_BOW_sample.json'
 MODEL_DIR = 'xgb_model.m'
 
