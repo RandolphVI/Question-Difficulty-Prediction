@@ -11,17 +11,17 @@ def parameter_parser():
     # Data Parameters
     parser.add_argument("--train-file",
                         nargs="?",
-                        default="../../data/Train_sample.json",
+                        default="../../data/Train_pairwise_sample.json",
                         help="Training data.")
 
     parser.add_argument("--validation-file",
                         nargs="?",
-                        default="../../data/Validation_sample.json",
+                        default="../../data/Validation_pairwise_sample.json",
                         help="Validation data.")
 
     parser.add_argument("--test-file",
                         nargs="?",
-                        default="../../data/Test_sample.json",
+                        default="../../data/Test_pairwise_sample.json",
                         help="Testing data.")
 
     parser.add_argument("--metadata-file",
@@ -33,6 +33,11 @@ def parameter_parser():
                         nargs="?",
                         default="../../data/word2vec_300.txt",
                         help="Word2vec file for embedding characters. (the dim need to be the same as embedding dim).")
+
+    parser.add_argument("--TR-option",
+                        nargs="?",
+                        default="T",
+                        help="Training or Restore pattern. (T or R).")
 
     # Model Hyperparameters
     parser.add_argument("--pad-seq-len",
@@ -52,8 +57,8 @@ def parameter_parser():
 
     parser.add_argument("--attention-type",
                         nargs="?",
-                        default="normal",
-                        help="The attention type. ('normal', 'cosine', 'mlp')")
+                        default="islet",
+                        help="The attention type. ('normal', 'cosine', 'mlp', 'islet')")
 
     parser.add_argument("--attention-dim",
                         type=int,
@@ -126,11 +131,6 @@ def parameter_parser():
                         default=500,
                         help="How many steps before decay learning rate. (default: 500)")
 
-    parser.add_argument("--evaluate-steps",
-                        type=int,
-                        default=10,
-                        help="Evaluate model on val set after how many steps. (default: 10)")
-
     parser.add_argument("--norm-ratio",
                         type=float,
                         default=1.25,
@@ -141,30 +141,9 @@ def parameter_parser():
                         default=0.0,
                         help="L2 regularization lambda. (default: 0.0)")
 
-    parser.add_argument("--checkpoint-steps",
-                        type=int,
-                        default=10,
-                        help="Save model after how many steps. (default: 10)")
-
     parser.add_argument("--num-checkpoints",
                         type=int,
-                        default=10,
-                        help="Number of checkpoints to store. (default: 10)")
-
-    # Misc Parameters
-    parser.add_argument("--allow-soft-placement",
-                        type=bool,
-                        default=True,
-                        help="Allow device soft device placement. (default: True)")
-
-    parser.add_argument("--log-device-placement",
-                        type=bool,
-                        default=False,
-                        help="Log placement of ops on devices. (default: False)")
-
-    parser.add_argument("--gpu-options-allow-growth",
-                        type=bool,
-                        default=True,
-                        help="Allow gpu options growth. (default: True)")
+                        default=3,
+                        help="Number of checkpoints to store. (default: 5)")
 
     return parser.parse_args()

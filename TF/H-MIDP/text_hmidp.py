@@ -10,7 +10,8 @@ class TextHMIDP(object):
 
     def __init__(
             self, sequence_length, vocab_size, embedding_type, embedding_size, filter_sizes, num_filters,
-            pooling_size, rnn_hidden_size, fc_hidden_size, l2_reg_lambda=0.0, pretrained_embedding=None):
+            pooling_size, rnn_hidden_size, rnn_type, rnn_layers, fc_hidden_size, l2_reg_lambda=0.0,
+            pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
         self.input_x_content = tf.placeholder(tf.int32, [None, sequence_length[0]], name="input_x_content")
@@ -22,23 +23,13 @@ class TextHMIDP(object):
 
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
 
-        def _fc_layer(input_x, name=""):
-            """
-            Fully Connected Layer.
-            Args:
-                input_x:
-                name: Scope name
-            Returns:
-                [batch_size, fc_hidden_size]
-            """
-            with tf.name_scope(name + "fc"):
-                num_units = input_x.get_shape().as_list()[-1]
-                W = tf.Variable(tf.truncated_normal(shape=[num_units, fc_hidden_size],
-                                                    stddev=0.1, dtype=tf.float32), name="W")
-                b = tf.Variable(tf.constant(value=0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
-                fc = tf.nn.xw_plus_b(input_x, W, b)
-                fc_out = tf.nn.relu(fc)
-            return fc_out
+        def _get_rnn_cell(rnn_hidden_size, rnn_type):
+            if rnn_type == 'RNN':
+                return tf.nn.rnn_cell.BasicRNNCell(rnn_hidden_size)
+            if rnn_type == 'LSTM':
+                return tf.nn.rnn_cell.BasicLSTMCell(rnn_hidden_size)
+            if rnn_type == 'GRU':
+                return tf.nn.rnn_cell.GRUCell(rnn_hidden_size)
 
         def _convolution(input_, pool_size, layer_cnt):
             index = layer_cnt - 1
@@ -74,14 +65,16 @@ class TextHMIDP(object):
                     name="pool")
             return pooled
 
-        def _bi_lstm(input_x, name=""):
-            # Bi-LSTM Layer
-            with tf.variable_scope(name + "Bi_lstm", reuse=tf.AUTO_REUSE):
-                lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden_size)  # forward direction cell
-                lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden_size)  # backward direction cell
+        def _bi_rnn_layer(input_x, name=""):
+            # Bi-RNN Layer
+            with tf.variable_scope(name + "Bi_rnn", reuse=tf.AUTO_REUSE):
+                fw_rnn_cell = tf.nn.rnn_cell.MultiRNNCell([_get_rnn_cell(rnn_hidden_size, rnn_type)
+                                                           for _ in range(rnn_layers)])
+                bw_rnn_cell = tf.nn.rnn_cell.MultiRNNCell([_get_rnn_cell(rnn_hidden_size, rnn_type)
+                                                           for _ in range(rnn_layers)])
                 if self.dropout_keep_prob is not None:
-                    lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_fw_cell, output_keep_prob=self.dropout_keep_prob)
-                    lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_bw_cell, output_keep_prob=self.dropout_keep_prob)
+                    fw_rnn_cell = tf.nn.rnn_cell.DropoutWrapper(fw_rnn_cell, output_keep_prob=self.dropout_keep_prob)
+                    bw_rnn_cell = tf.nn.rnn_cell.DropoutWrapper(bw_rnn_cell, output_keep_prob=self.dropout_keep_prob)
 
                 # Creates a dynamic bidirectional recurrent neural network
                 # shape of `outputs`: tuple -> (outputs_fw, outputs_bw)
@@ -89,16 +82,34 @@ class TextHMIDP(object):
 
                 # shape of `state`: tuple -> (outputs_state_fw, output_state_bw)
                 # shape of `outputs_state_fw`: tuple -> (c, h) c: memory cell; h: hidden state
-                outputs, state = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, input_x, dtype=tf.float32)
+                outputs, state = tf.nn.bidirectional_dynamic_rnn(fw_rnn_cell, bw_rnn_cell, input_x, dtype=tf.float32)
 
             # Concat output
             # [batch_size, sequence_length, rnn_hidden_size * 2]
-            lstm_out = tf.concat(outputs, axis=2, name=name + "lstm_out")
+            rnn_out = tf.concat(outputs, axis=2, name=name + "rnn_out")
 
             # [batch_size, rnn_hidden_size * 2]
-            lstm_pooled = tf.reduce_max(lstm_out, axis=1, name=name + "lstm_pooled")
+            rnn_pooled = tf.reduce_max(rnn_out, axis=1, name=name + "rnn_pooled")
 
-            return lstm_pooled
+            return rnn_pooled
+
+        def _fc_layer(input_x, name=""):
+            """
+            Fully Connected Layer.
+            Args:
+                input_x:
+                name: Scope name
+            Returns:
+                [batch_size, fc_hidden_size]
+            """
+            with tf.name_scope(name + "fc"):
+                num_units = input_x.get_shape().as_list()[-1]
+                W = tf.Variable(tf.truncated_normal(shape=[num_units, fc_hidden_size],
+                                                    stddev=0.1, dtype=tf.float32), name="W")
+                b = tf.Variable(tf.constant(value=0.1, shape=[fc_hidden_size], dtype=tf.float32), name="b")
+                fc = tf.nn.xw_plus_b(input_x, W, b)
+                fc_out = tf.nn.relu(fc)
+            return fc_out
 
         # Embedding Layer
         with tf.device("/cpu:0"), tf.name_scope("embedding"):
@@ -135,15 +146,15 @@ class TextHMIDP(object):
         self.conv2_out = _convolution(self.conv1_out_trans, pool_size=new_pooling_size, layer_cnt=2)
         self.conv_final_flat = tf.reshape(self.conv2_out, shape=[-1, num_filters[1]])
 
-        # Bi-LSTM Layer
-        # bi_lstm_out: [batch_size, rnn_hidden_size * 2]
-        self.bi_lstm_out = _bi_lstm(self.embedded_sentence_all, name="total_")
+        # Bi-RNN Layer
+        # bi_rnn_out: [batch_size, rnn_hidden_size * 2]
+        self.bi_rnn_out = _bi_rnn_layer(self.embedded_sentence_all, name="total_")
 
         # Concat
-        self.conv_lstm_concat = tf.concat([self.conv_final_flat, self.bi_lstm_out], axis=1)
+        self.conv_rnn_concat = tf.concat([self.conv_final_flat, self.bi_rnn_out], axis=1)
 
         # Fully Connected Layer 1
-        self.fc1_out = _fc_layer(self.conv_final_flat)
+        self.fc1_out = _fc_layer(self.conv_rnn_concat)
 
         # Fully Connected Layer 2
         self.fc2_out = _fc_layer(self.fc1_out)

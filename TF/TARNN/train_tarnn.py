@@ -54,6 +54,8 @@ def train_tarnn():
                 embedding_type=args.embedding_type,
                 embedding_size=EMBEDDING_SIZE,
                 rnn_hidden_size=args.rnn_dim,
+                rnn_type=args.rnn_type,
+                rnn_layers=args.rnn_layers,
                 attention_type=args.attention_type,
                 fc_hidden_size=args.fc_dim,
                 l2_reg_lambda=args.l2_lambda,

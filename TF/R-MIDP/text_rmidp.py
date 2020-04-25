@@ -9,8 +9,8 @@ class TextRMIDP(object):
     """A RMIDP for text classification."""
 
     def __init__(
-            self, sequence_length, vocab_size, embedding_type, embedding_size, fc_hidden_size, rnn_hidden_size,
-            l2_reg_lambda=0.0, pretrained_embedding=None):
+            self, sequence_length, vocab_size, embedding_type, embedding_size, rnn_hidden_size, rnn_type,
+            rnn_layers, fc_hidden_size, l2_reg_lambda=0.0, pretrained_embedding=None):
 
         # Placeholders for input, output, dropout_prob and training_tag
         self.input_x_content = tf.placeholder(tf.int32, [None, sequence_length[0]], name="input_x_content")
@@ -21,6 +21,42 @@ class TextRMIDP(object):
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
+
+        def _get_rnn_cell(rnn_hidden_size, rnn_type):
+            if rnn_type == 'RNN':
+                return tf.nn.rnn_cell.BasicRNNCell(rnn_hidden_size)
+            if rnn_type == 'LSTM':
+                return tf.nn.rnn_cell.BasicLSTMCell(rnn_hidden_size)
+            if rnn_type == 'GRU':
+                return tf.nn.rnn_cell.GRUCell(rnn_hidden_size)
+
+        def _bi_rnn_layer(input_x, name=""):
+            # Bi-RNN Layer
+            with tf.variable_scope(name + "Bi_rnn", reuse=tf.AUTO_REUSE):
+                fw_rnn_cell = tf.nn.rnn_cell.MultiRNNCell([_get_rnn_cell(rnn_hidden_size, rnn_type)
+                                                           for _ in range(rnn_layers)])
+                bw_rnn_cell = tf.nn.rnn_cell.MultiRNNCell([_get_rnn_cell(rnn_hidden_size, rnn_type)
+                                                           for _ in range(rnn_layers)])
+                if self.dropout_keep_prob is not None:
+                    fw_rnn_cell = tf.nn.rnn_cell.DropoutWrapper(fw_rnn_cell, output_keep_prob=self.dropout_keep_prob)
+                    bw_rnn_cell = tf.nn.rnn_cell.DropoutWrapper(bw_rnn_cell, output_keep_prob=self.dropout_keep_prob)
+
+                # Creates a dynamic bidirectional recurrent neural network
+                # shape of `outputs`: tuple -> (outputs_fw, outputs_bw)
+                # shape of `outputs_fw`: [batch_size, sequence_length, rnn_hidden_size]
+
+                # shape of `state`: tuple -> (outputs_state_fw, output_state_bw)
+                # shape of `outputs_state_fw`: tuple -> (c, h) c: memory cell; h: hidden state
+                outputs, state = tf.nn.bidirectional_dynamic_rnn(fw_rnn_cell, bw_rnn_cell, input_x, dtype=tf.float32)
+
+            # Concat output
+            # [batch_size, sequence_length, rnn_hidden_size * 2]
+            rnn_out = tf.concat(outputs, axis=2, name=name + "rnn_out")
+
+            # [batch_size, rnn_hidden_size * 2]
+            rnn_pooled = tf.reduce_max(rnn_out, axis=1, name=name + "rnn_pooled")
+
+            return rnn_pooled
 
         def _fc_layer(input_x, name=""):
             """
@@ -39,32 +75,6 @@ class TextRMIDP(object):
                 fc = tf.nn.xw_plus_b(input_x, W, b)
                 fc_out = tf.nn.relu(fc)
             return fc_out
-
-        def _bi_lstm(input_x, name=""):
-            # Bi-LSTM Layer
-            with tf.variable_scope(name + "Bi_lstm", reuse=tf.AUTO_REUSE):
-                lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden_size)  # forward direction cell
-                lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden_size)  # backward direction cell
-                if self.dropout_keep_prob is not None:
-                    lstm_fw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_fw_cell, output_keep_prob=self.dropout_keep_prob)
-                    lstm_bw_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_bw_cell, output_keep_prob=self.dropout_keep_prob)
-
-                # Creates a dynamic bidirectional recurrent neural network
-                # shape of `outputs`: tuple -> (outputs_fw, outputs_bw)
-                # shape of `outputs_fw`: [batch_size, sequence_length, rnn_hidden_size]
-
-                # shape of `state`: tuple -> (outputs_state_fw, output_state_bw)
-                # shape of `outputs_state_fw`: tuple -> (c, h) c: memory cell; h: hidden state
-                outputs, state = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, input_x, dtype=tf.float32)
-
-            # Concat output
-            # [batch_size, sequence_length, rnn_hidden_size * 2]
-            lstm_out = tf.concat(outputs, axis=2, name=name + "lstm_out")
-
-            # [batch_size, rnn_hidden_size * 2]
-            lstm_pooled = tf.reduce_max(lstm_out, axis=1, name=name + "lstm_pooled")
-
-            return lstm_pooled
 
         # Embedding Layer
         with tf.device("/cpu:0"), tf.name_scope("embedding"):
@@ -88,12 +98,12 @@ class TextRMIDP(object):
         self.embedded_sentence_all = tf.concat([self.embedded_sentence_content, self.embedded_sentence_question,
                                                self.embedded_sentence_option], axis=1)
 
-        # Bi-LSTM Layer
-        # bi_lstm_out: [batch_size, rnn_hidden_size * 2]
-        self.bi_lstm_out = _bi_lstm(self.embedded_sentence_all, name="total_")
+        # Bi-RNN Layer
+        # bi_rnn_out: [batch_size, rnn_hidden_size * 2]
+        self.bi_rnn_out = _bi_rnn_layer(self.embedded_sentence_all, name="total_")
 
         # Fully Connected Layer
-        self.fc_out = _fc_layer(self.bi_lstm_out)
+        self.fc_out = _fc_layer(self.bi_rnn_out)
 
         # Add dropout
         with tf.name_scope("dropout"):
