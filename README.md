@@ -10,6 +10,8 @@ The main objective of the project is to predict the difficulty of each given que
 - Python 3.6
 - Tensorflow 1.14.0
 - PyTorch 1.4.0
+- XGBoost 1.0.2
+- Sklearn
 - Numpy
 - Gensim
 
@@ -29,21 +31,14 @@ The project structure is below:
 ```text
 .
 ├── TMLA(Traditional Machine Learning Algorithms)
-│   ├── DTR
-│   ├── LR
-│   ├── SVM
-│   ├── XGBoost
+│   ├── DTR / LR / SVM / XGBoost
 │   └── utils
 ├── TF(TensorFlow)
-│   ├── C-MIDP
-│   ├── H-MIDP
-│   ├── R-MIDP
+│   ├── C-MIDP / R-MIDP / H-MIDP
 │   ├── TARNN
 │   └── utils
 ├── PyTorch
-│   ├── C-MIDP
-│   ├── H-MIDP
-│   ├── R-MIDP
+│   ├── C-MIDP / R-MIDP / H-MIDP
 │   ├── TARNN
 │   │   ├── test_tarnn.py
 │   │   ├── text_tarnn.py
@@ -53,11 +48,9 @@ The project structure is below:
 │       └── data_helpers.py
 ├── data
 │   ├── word2vec_300.txt [Need Download]
-│   ├── test_sample.json
-│   ├── train_sample.json
-│   ├── validation_sample.json
-│   ├── Train_BOW_sample.json
-│   └── Test_BOW_sample.json
+│   ├── Train / Validation /Test_sample.json
+│   ├── Train / Validation / Test_BOW_sample.json
+│   └── Train / Validation / Test_pairwise_sample.json
 ├── LICENSE
 ├── README.md
 └── requirements.txt
@@ -65,7 +58,7 @@ The project structure is below:
 
 ## Data
 
-See data format in `/data` folder which including the data sample files. For example:
+See data format in `/data` folder which including the data sample files. For example, `train_sample.json` is like:
 
 ```json
 {"id": "6", "content": ["year", "ruined", "summer", "vacation-a", "two-week", "vacation", "wife", "family", "cabin", "lake", "northern", "ontario", "located", "boundary", "canada-by", "bringing", "modern", "convenience", "wa", "convenient", "good", "ipad", "admiring", "beauty", "nature", "checked", "e-mail", "paddling", "canoe", "twitter", "feed", "devouring", "great", "amusing", "stuck", "workday", "diet", "newspaper", "morning", "wa", "problem", "wa", "behaving", "office", "sticking", "unending", "news", "cycle", "body", "wa", "vacation", "head", "wasnt", "year", "made", "mind", "social", "medium", "experiment", "reverse", "withdrawal", "internet", "manage", "unplug", "knew", "wouldnt", "easy", "im", "good", "self-denial", "wa", "determined", "started", "physical", "restraint", "handing", "ipad", "wife", "helpfully", "announced", "wa", "read", "book", "club", "inclined", "relinquish", "tablet", "moment", "stroke", "luck", "cell", "phone", "signal", "canadian", "cabin", "wa", "spottier", "past", "making", "attempt", "cheating", "experience", "frustration", "wa", "trapped", "forced", "comply", "good", "intention", "largely", "cut", "e-mail", "twitter", "favorite", "newspaper", "website", "connect", "world", "radio-and", "radio", "listen", "choice", "planned", "read", "book", "experienced", "criminal", "plot", "street", "los", "angeles", "cutthroat", "battle", "cancer", "lab", "psyche", "london", "social", "butterfly", "magazine", "read", "im", "claiming", "cut", "internet", "completely", "day", "biked", "nearest", "town", "reward", "sat", "park", "bench", "front", "public", "library", "wi-fi", "back", "cabin", "suffered", "slow", "dial-up", "connection", "day", "check", "e-mail", "tale", "self-denial", "ha", "happy", "ending-for", "determination", "deep", "breathing", "strong", "support", "wife", "succeeded", "vacation", "struggle", "internet", "realizing", "finally", "wa", "ipad", "wa", "problem", "knew", "passed", "starbucks", "wife", "asked", "wanted", "stop", "wi-fi", "dont", "sound", "pleased", "return", "post-vacation", "situation", "test", "begin", "stay", "wagon", "im", "back", "work", "time", "compulsion", "whats", "overwhelming", "crucial", "livelihood", "intention", "giving", "membership", "cult", "immediacy", "hope", "resist", "temptation", "reflexively", "check", "e-mail", "minute", "lead", "long", "im", "checking", "twitter", "feed", "website", "vacation", "supposed", "reset", "brain", "productive", "hoping", "worked"], "question": ["doe", "underlined", "word", "restraint"], "pos_text": ["calm", "controlled", "behavior"], "neg_text": ["relaxing", "move", "strong", "determination", "unshakable", "faith"], "diff": 0.550373134328}
