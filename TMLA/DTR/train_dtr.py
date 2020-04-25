@@ -1,9 +1,12 @@
 # -*- coding:utf-8 -*-
 __author__ = 'Randolph'
 
+import sys
 import time
 
-from TMLA.utils import data_process as dp
+sys.path.append('../')
+
+from utils import data_process as dp
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.externals import joblib
 

@@ -113,6 +113,7 @@ data/preprocess.py
 !/data/Validation_sample.json
 !/data/Test_sample.json
 !/data/Train_BOW_sample.json
+!/data/Validation_BOW_sample.json
 !/data/Test_BOW_sample.json
 
 # Model File
