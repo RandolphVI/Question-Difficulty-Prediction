@@ -142,7 +142,7 @@ class TextHMIDP(object):
         self.conv1_out_trans = tf.transpose(self.conv1_out, perm=[0, 1, 3, 2])
 
         # Convolution Layer 2
-        new_pooling_size = (sequence_length_total + filter_sizes[1] - 1) // pooling_size
+        new_pooling_size = (sequence_length_total + filter_sizes[0] - 1) // pooling_size
         self.conv2_out = _convolution(self.conv1_out_trans, pool_size=new_pooling_size, layer_cnt=2)
         self.conv_final_flat = tf.reshape(self.conv2_out, shape=[-1, num_filters[1]])
 

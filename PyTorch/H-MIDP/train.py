@@ -38,7 +38,7 @@ def create_input_data(record):
 
 
 def train():
-    """Training CMIDP model."""
+    """Training HMIDP model."""
     dh.tab_printer(args, logger)
 
     # Load sentences, labels, and training parameters
