@@ -92,6 +92,9 @@ def train():
         net.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
+    logger.info("Training...")
+    writer = SummaryWriter('summary')
+
     def eval_model(val_loader, epoch):
         """
         Evaluate on the validation set.
@@ -124,8 +127,6 @@ def train():
         writer.add_scalar('validation R2', eval_r2, epoch)
         return cur_value
 
-    logger.info("Training...")
-    writer = SummaryWriter('summary')
     for epoch in tqdm(range(args.epochs), desc="Epochs:", leave=True):
         # Training step
         for batch_cnt, batch in tqdm(enumerate(train_loader), desc="Batches", leave=True):
@@ -143,7 +144,7 @@ def train():
         saver.handle(cur_value, net, optimizer, epoch)
     writer.close()
 
-    logger.info('Finished Training.')
+    logger.info('Training Finished.')
 
 
 if __name__ == "__main__":

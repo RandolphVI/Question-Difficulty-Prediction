@@ -9,7 +9,7 @@ import torch.nn as nn
 
 sys.path.append('../')
 
-from layers import TARNN, MSE_Loss
+from layers import TARNN, Loss
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from utils import param_parser as parser
@@ -24,6 +24,17 @@ OPTION = dh.option()
 logger = dh.logger_fn("ptlog", "logs/{0}-{1}.log".format('Train' if OPTION == 'T' else 'Restore', time.asctime()))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
+def create_input_data(record):
+    """
+    Creating features and targets with Torch tensors.
+    """
+    x_f_content, x_b_content, x_f_question, x_b_question, x_f_option, x_b_option, y_f, y_b = record
+    x_fb_content = (x_f_content.to(device), x_b_content.to(device))
+    x_fb_question = (x_f_question.to(device), x_b_question.to(device))
+    x_fb_option = (x_f_option.to(device), x_b_option.to(device))
+    y_fb = (y_f.to(device), y_b.to(device))
+    return x_fb_content, x_fb_question, x_fb_option, y_fb
 
 def weights_init(model):
     for m in model.modules():
@@ -42,7 +53,7 @@ def print_weight(model):
             print("next...")
 
 
-def train_tarnn():
+def train():
     """Training TARNN model."""
     dh.tab_printer(args, logger)
 
@@ -70,17 +81,6 @@ def train_tarnn():
     # Load word2vec model
     VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix = dh.load_word2vec_matrix(args.word2vec_file)
 
-    def create_input_data(record):
-        """
-        Creating features and targets with Torch tensors.
-        """
-        x_f_content, x_b_content, x_f_question, x_b_question, x_f_option, x_b_option, y_f, y_b = record
-        x_fb_content = (x_f_content.to(device), x_b_content.to(device))
-        x_fb_question = (x_f_question.to(device), x_b_question.to(device))
-        x_fb_option = (x_f_option.to(device), x_b_option.to(device))
-        y_fb = (y_f.to(device), y_b.to(device))
-        return x_fb_content, x_fb_question, x_fb_option, y_fb
-
     # Init network
     logger.info("Init nn...")
     net = TARNN(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix, args.dropout_rate).to(device)
@@ -92,7 +92,7 @@ def train_tarnn():
     for param_tensor in net.state_dict():
         print(param_tensor, "\t", net.state_dict()[param_tensor].size())
 
-    criterion = MSE_Loss()
+    criterion = Loss()
     optimizer = torch.optim.SGD(net.parameters(), lr=args.learning_rate, weight_decay=args.l2_lambda)
 
     if OPTION == 'T':
@@ -103,7 +103,7 @@ def train_tarnn():
     elif OPTION == 'R':
         timestamp = input("[Input] Please input the checkpoints model you want to restore: ")
         while not (timestamp.isdigit() and len(timestamp) == 10):
-            timestamp = input("[Error] The format of your input is illegal, please re-input: ")
+            timestamp = input("[Warning] The format of your input is illegal, please re-input: ")
         out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
         saver = cm.BestCheckpointSaver(save_dir=out_dir, num_to_keep=args.num_checkpoints, maximize=False)
         logger.info("Writing to {0}\n".format(out_dir))
@@ -164,9 +164,8 @@ def train_tarnn():
         saver.handle(cur_value, net, optimizer, epoch)
     writer.close()
 
-    logger.info('Finished Training.')
+    logger.info('Training Finished.')
 
 
 if __name__ == "__main__":
-    train_tarnn()
-
+    train()

@@ -1,3 +1,6 @@
+# -*- coding:utf-8 -*-
+__author__ = 'randolph'
+
 """TARNN layers."""
 
 import torch
@@ -8,13 +11,13 @@ from torch.autograd import Variable
 
 
 class BiRNNLayer(nn.Module):
-    def __init__(self, embedding_size, rnn_type, rnn_layers, rnn_hidden_size, dropout_keep_prob):
+    def __init__(self, input_units, rnn_type, rnn_layers, rnn_hidden_size, dropout_keep_prob):
         super(BiRNNLayer, self).__init__()
         if rnn_type == 'LSTM':
-            self.bi_rnn = nn.LSTM(input_size=embedding_size, hidden_size=rnn_hidden_size, num_layers=rnn_layers,
+            self.bi_rnn = nn.LSTM(input_size=input_units, hidden_size=rnn_hidden_size, num_layers=rnn_layers,
                                   batch_first=True, bidirectional=True, dropout=dropout_keep_prob)
         if rnn_type == 'GRU':
-            self.bi_rnn = nn.GRU(input_size=embedding_size, hidden_size=rnn_hidden_size, num_layers=rnn_layers,
+            self.bi_rnn = nn.GRU(input_size=input_units, hidden_size=rnn_hidden_size, num_layers=rnn_layers,
                                  batch_first=True, bidirectional=True, dropout=dropout_keep_prob)
 
     def forward(self, input_x):
@@ -88,7 +91,7 @@ class TARNN(nn.Module):
 
     def _setup_embedding_layer(self):
         """
-        Creating TARNN layers.
+        Creating Embedding layers.
         """
         if self.pretrained_embedding is None:
             embedding_weight = torch.FloatTensor(np.random.uniform(-1, 1, size=(self.vocab_size, self.embedding_size)))
@@ -104,19 +107,19 @@ class TARNN(nn.Module):
         """
         Creating Bi-RNN Layer.
         """
-        self.bi_rnn_content = BiRNNLayer(embedding_size=self.embedding_size, rnn_type=self.args.rnn_type,
+        self.bi_rnn_content = BiRNNLayer(input_units=self.embedding_size, rnn_type=self.args.rnn_type,
                                          rnn_layers=self.args.rnn_layers, rnn_hidden_size=self.args.rnn_dim,
                                          dropout_keep_prob=self.dropout_rate)
-        self.bi_rnn_question = BiRNNLayer(embedding_size=self.embedding_size, rnn_type=self.args.rnn_type,
+        self.bi_rnn_question = BiRNNLayer(input_units=self.embedding_size, rnn_type=self.args.rnn_type,
                                           rnn_layers=self.args.rnn_layers, rnn_hidden_size=self.args.rnn_dim,
                                           dropout_keep_prob=self.dropout_rate)
-        self.bi_rnn_option = BiRNNLayer(embedding_size=self.embedding_size, rnn_type=self.args.rnn_type,
+        self.bi_rnn_option = BiRNNLayer(input_units=self.embedding_size, rnn_type=self.args.rnn_type,
                                         rnn_layers=self.args.rnn_layers, rnn_hidden_size=self.args.rnn_dim,
                                         dropout_keep_prob=self.dropout_rate)
 
     def _setup_attention(self):
         """
-        Creating attention Layer.
+        Creating Attention Layer.
         """
         self.att_cq = AttentionLayer(num_units=self.args.attention_dim,
                                      att_unit_size=self.args.attention_dim,
@@ -140,7 +143,7 @@ class TARNN(nn.Module):
 
     def _setup_dropout(self):
         """
-         Creating Dropout.
+         Adding Dropout.
          """
         self.dropout = nn.Dropout(self.dropout_rate)
 
@@ -151,7 +154,8 @@ class TARNN(nn.Module):
         2. Bi-RNN Layer.
         3. Attention Layer.
         4. Highway Layer.
-        4. FC Layer.
+        5. FC Layer.
+        6. Dropout
         """
         self._setup_embedding_layer()
         self._setup_bi_rnn_layer()
@@ -171,18 +175,18 @@ class TARNN(nn.Module):
         embedded_question_average = torch.mean(embedded_sentence_question, dim=1)
         embedded_option_average = torch.mean(embedded_sentence_option, dim=1)
 
-        # Bi-LSTM Layer
-        lstm_out_content, lstm_avg_content = self.bi_rnn_content(embedded_sentence_content)
-        lstm_out_question, lstm_avg_question = self.bi_rnn_question(embedded_sentence_question)
-        lstm_out_option, lstm_avg_option = self.bi_rnn_option(embedded_sentence_option)
+        # Bi-RNN Layer
+        rnn_out_content, rnn_avg_content = self.bi_rnn_content(embedded_sentence_content)
+        rnn_out_question, rnn_avg_question = self.bi_rnn_question(embedded_sentence_question)
+        rnn_out_option, rnn_avg_option = self.bi_rnn_option(embedded_sentence_option)
 
         # Attention Layer
-        attention_cq_visual, attention_cq = self.att_cq(lstm_out_content, lstm_out_question)
-        attention_oq_visual, attention_oq = self.att_oq(lstm_out_option, lstm_out_question)
+        attention_cq_visual, attention_cq = self.att_cq(rnn_out_content, rnn_out_question)
+        attention_oq_visual, attention_oq = self.att_oq(rnn_out_option, rnn_out_question)
 
         # Concat
         # shape of att_out: [batch_size, lstm_hidden_size * 2 * 3]
-        att_out = torch.cat((attention_cq, lstm_avg_question, attention_oq), dim=1)
+        att_out = torch.cat((attention_cq, rnn_avg_question, attention_oq), dim=1)
 
         # Fully Connected Layer
         fc_out = self.fc(att_out)
@@ -193,7 +197,10 @@ class TARNN(nn.Module):
         # Dropout
         h_drop = self.dropout(highway_out)
 
-        return h_drop
+        logits = self.out(h_drop).squeeze()
+        scores = torch.sigmoid(logits)
+
+        return logits, scores
 
     def forward(self, x_fb_content, x_fb_question, x_fb_option):
         """
@@ -201,30 +208,25 @@ class TARNN(nn.Module):
         :param x_fb_content: Front & Behind Content tensors with features. <list>
         :param x_fb_question: Front & Behind Question tensors with features. <list>
         :param x_fb_option: Front & Behind Option tensors  with features. <list>
-        # TODO
-        :return class_capsule_output: Class capsule outputs.
+        :return logits: The predicted logistic values.
+        :return scores: The predicted scores.
         """
-        self.f_out = self._sub_network(x_fb_content[0], x_fb_question[0], x_fb_option[0])
-        self.b_out = self._sub_network(x_fb_content[1], x_fb_question[1], x_fb_option[1])
-
-        # Final scores
-        f_logits = self.out(self.f_out).squeeze()
-        b_logits = self.out(self.b_out).squeeze()
-        f_scores = torch.sigmoid(f_logits)
-        b_scores = torch.sigmoid(b_logits)
+        f_logits, f_scores = self._sub_network(x_fb_content[0], x_fb_question[0], x_fb_option[0])
+        b_logits, b_scores = self._sub_network(x_fb_content[1], x_fb_question[1], x_fb_option[1])
 
         logits = (f_logits, b_logits)
         scores = (f_scores, b_scores)
         return logits, scores
 
 
-class MSE_Loss(nn.Module):
+class Loss(nn.Module):
     def __init__(self):
-        super(MSE_Loss, self).__init__()
+        super(Loss, self).__init__()
         self.MSELoss = nn.MSELoss(reduce=True, size_average=True)
 
     def forward(self, predict_y, input_y):
         # Loss
+        # TODO
         f_loss = self.MSELoss(predict_y[0], input_y[0])
         b_loss = self.MSELoss(predict_y[1], input_y[1])
         losses = f_loss + b_loss
