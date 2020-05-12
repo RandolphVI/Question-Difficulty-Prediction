@@ -53,7 +53,7 @@ def parameter_parser():
     parser.add_argument("--attention-type",
                         nargs="?",
                         default="normal",
-                        help="The attention type. ('normal', 'cosine', 'mlp')")
+                        help="The attention type. ('normal', 'cosine', 'mlp', 'islet')")
 
     parser.add_argument("--attention-dim",
                         type=int,

@@ -98,7 +98,9 @@ class TextTARNN(object):
                     for i in range(seq_len):
                         normalize_y = tf.nn.l2_normalize(tf.expand_dims(y[i], axis=1), 2)
                         cos_similarity = tf.reduce_sum(tf.multiply(normalize_y, normalize_x), axis=2)
+                        # cos_similarity: [batch_size, seq_len_1]
                         cos_matrix.append(cos_similarity)
+                    # attention_matrix: [batch_size, seq_len_2, seq_len_1]
                     attention_matrix = tf.stack(cos_matrix, axis=1, name="attention_matrix")
                     attention_visual = tf.reduce_mean(attention_matrix, axis=1, name="visual")
                     attention_out = tf.multiply(tf.expand_dims(attention_visual, axis=-1), input_x)
@@ -126,18 +128,19 @@ class TextTARNN(object):
                     attention_visual = tf.reduce_mean(attention_matrix, axis=1, name="visual")
                     attention_out = tf.matmul(attention_weight, input_x)
                     attention_out = tf.reduce_mean(attention_out, axis=1)
-            if attention_type == 'hf':
-                with tf.name_scope(name + 'hf_attention'):
+            if attention_type == 'islet':
+                with tf.name_scope(name + 'islet_attention'):
                     alpha_matrix = []
                     seq_len = input_y.get_shape().as_list()[-2]
                     y = tf.unstack(input_y, axis=1)
                     for t in range(seq_len):
                         u_t = tf.matmul(tf.expand_dims(y[t], axis=1), tf.transpose(input_x, perm=[0, 2, 1]))
+                        # u_t: [batch_size, 1, seq_len_1]
                         u_t = tf.tanh(u_t)
                         alpha_matrix.append(u_t)
                     attention_matrix = tf.stack(alpha_matrix, axis=1)
+                    # attention_matrix: [batch_size, seq_len_2, seq_len_1] (after squeeze)
                     attention_matrix = tf.squeeze(attention_matrix, axis=2)
-                    print(attention_matrix)
                     attention_weight = tf.nn.softmax(attention_matrix, name="attention_matrix")
                     attention_visual = tf.reduce_mean(attention_weight, axis=1, name="visual")
                     attention_out = tf.multiply(tf.expand_dims(attention_visual, axis=-1), input_x)

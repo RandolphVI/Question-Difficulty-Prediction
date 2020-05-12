@@ -12,6 +12,7 @@ from layers import TARNN, Loss
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from utils import param_parser as parser
+from tqdm import trange
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import mean_squared_error, r2_score
 
@@ -51,7 +52,7 @@ def test():
     VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix = dh.load_word2vec_matrix(args.word2vec_file)
 
     criterion = Loss()
-    model = CMIDP(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
+    model = TARNN(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
     checkpoint_file = cm.get_best_checkpoint(CPT_DIR, select_maximum_value=False)
     checkpoint = torch.load(checkpoint_file)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -59,7 +60,8 @@ def test():
 
     logger.info("Scoring...")
     true_labels, predicted_scores = [], []
-    for batch in test_loader:
+    batches = trange(len(test_loader), desc="Batches", leave=True)
+    for batch_cnt, batch in zip(batches, test_loader):
         x_test_fb_content, x_test_fb_question, x_test_fb_option, y_test_fb = create_input_data(batch)
         logits, scores = model(x_test_fb_content, x_test_fb_question, x_test_fb_option)
         for i in y_test_fb[0].tolist():

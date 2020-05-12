@@ -57,8 +57,8 @@ def parameter_parser():
 
     parser.add_argument("--attention-type",
                         nargs="?",
-                        default="islet",
-                        help="The attention type. ('normal', 'cosine', 'mlp', 'islet')")
+                        default="mlp",
+                        help="The attention type. ('normal', 'cosine', 'mlp')")
 
     parser.add_argument("--attention-dim",
                         type=int,
@@ -67,12 +67,22 @@ def parameter_parser():
 
     parser.add_argument("--filter-sizes",
                         type=list,
-                        default=[3, 3],
-                        help="Filter sizes. (default: 3)")
+                        default=[3, 5, 7],
+                        help="Filter sizes.")
+
+    parser.add_argument("--conv-padding-sizes",
+                        type=list,
+                        default=[1, 2, 3],
+                        help="Padding sizes for Conv Layer.")
+
+    parser.add_argument("--dilation-sizes",
+                        type=list,
+                        default=[1, 2, 3],
+                        help="Dilation sizes for Conv Layer.")
 
     parser.add_argument("--num-filters",
                         type=list,
-                        default=[200, 400],
+                        default=[256, 256, 256],
                         help="Number of filters per filter size. (default: 128)")
 
     parser.add_argument("--pooling-size",

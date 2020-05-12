@@ -13,7 +13,7 @@ from layers import CMIDP, Loss
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from utils import param_parser as parser
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import mean_squared_error, r2_score
@@ -129,7 +129,8 @@ def train():
 
     for epoch in tqdm(range(args.epochs), desc="Epochs:", leave=True):
         # Training step
-        for batch_cnt, batch in tqdm(enumerate(train_loader), desc="Batches", leave=True):
+        batches = trange(len(train_loader), desc="Batches", leave=True)
+        for batch_cnt, batch in zip(batches, train_loader):
             net.train()
             x_train_fb_content, x_train_fb_question, x_train_fb_option, y_train_fb = create_input_data(batch)
             optimizer.zero_grad()   # 如果不置零，Variable 的梯度在每次 backward 的时候都会累加
@@ -137,6 +138,7 @@ def train():
             avg_batch_loss = criterion(scores, y_train_fb)
             avg_batch_loss.backward()
             optimizer.step()    # Parameter updating
+            batches.set_description("Batches (Loss={:.4f})".format(avg_batch_loss.item()))
             logger.info('[epoch {0}, batch {1}] loss: {2:.4f}'.format(epoch + 1, batch_cnt, avg_batch_loss.item()))
             writer.add_scalar('training loss', avg_batch_loss, batch_cnt)
         # Evaluation step

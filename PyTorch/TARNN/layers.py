@@ -27,7 +27,6 @@ class BiRNNLayer(nn.Module):
 
 
 class AttentionLayer(nn.Module):
-    # TODO
     def __init__(self, num_units, att_unit_size, att_type):
         super(AttentionLayer, self).__init__()
         self.att_type = att_type
@@ -41,16 +40,26 @@ class AttentionLayer(nn.Module):
             # TODO
             attention_out = torch.mean(attention_out, dim=1)
         if self.att_type == 'cosine':
-            # cos_matrix = []
-            # normalized_x = F.normalize(input_x, p=2, dim=2)
-            pass
+            cos_matrix = []
+            seq_len = list(input_y.size())[-2]
+            normalized_x = F.normalize(input_x, p=2, dim=2)
+            for t in range(seq_len):
+                new_input_y = torch.unsqueeze(input_y[:, t, :], dim=1)
+                normalized_y = F.normalize(new_input_y, p=2, dim=2)
+                # cos_similarity: [batch_size, seq_len_1]
+                cos_similarity = torch.sum(torch.mul(normalized_y, normalized_x), dim=2)
+                cos_matrix.append(cos_similarity)
+            # attention_matrix: [batch_size, seq_len_2, seq_len_1]
+            attention_matrix = torch.stack(cos_matrix, dim=1)
+            attention_visual = torch.mean(attention_matrix, dim=1)
+            attention_out = torch.mul(torch.unsqueeze(attention_visual, dim=-1), input_x)
+            attention_out = torch.mean(attention_out, dim=1)
         if self.att_type == 'mlp':
-            pass
-        if self.att_type == 'islet':
             alpha_matrix = []
             seq_len = list(input_y.size())[-2]
             for t in range(seq_len):
                 u_t = torch.matmul(torch.unsqueeze(input_y[:, t, :], dim=1), input_x.transpose(1, 2))
+                # u_t: [batch_size, 1, seq_len_1]
                 u_t = torch.tanh(u_t)
                 alpha_matrix.append(u_t)
             attention_matrix = torch.cat(alpha_matrix, dim=1)
@@ -77,7 +86,7 @@ class HighwayLayer(nn.Module):
 
 class TARNN(nn.Module):
     """An implementation of TARNN"""
-    def __init__(self, args, vocab_size, embedding_size, pretrained_embedding=None, dropout_rate=None):
+    def __init__(self, args, vocab_size, embedding_size, pretrained_embedding=None):
         super(TARNN, self).__init__()
         """
         :param args: Arguments object.
@@ -85,7 +94,6 @@ class TARNN(nn.Module):
         self.args = args
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
-        self.dropout_rate = dropout_rate
         self.pretrained_embedding = pretrained_embedding
         self._setup_layers()
 
@@ -109,13 +117,13 @@ class TARNN(nn.Module):
         """
         self.bi_rnn_content = BiRNNLayer(input_units=self.embedding_size, rnn_type=self.args.rnn_type,
                                          rnn_layers=self.args.rnn_layers, rnn_hidden_size=self.args.rnn_dim,
-                                         dropout_keep_prob=self.dropout_rate)
+                                         dropout_keep_prob=self.args.dropout_rate)
         self.bi_rnn_question = BiRNNLayer(input_units=self.embedding_size, rnn_type=self.args.rnn_type,
                                           rnn_layers=self.args.rnn_layers, rnn_hidden_size=self.args.rnn_dim,
-                                          dropout_keep_prob=self.dropout_rate)
+                                          dropout_keep_prob=self.args.dropout_rate)
         self.bi_rnn_option = BiRNNLayer(input_units=self.embedding_size, rnn_type=self.args.rnn_type,
                                         rnn_layers=self.args.rnn_layers, rnn_hidden_size=self.args.rnn_dim,
-                                        dropout_keep_prob=self.dropout_rate)
+                                        dropout_keep_prob=self.args.dropout_rate)
 
     def _setup_attention(self):
         """
@@ -145,7 +153,7 @@ class TARNN(nn.Module):
         """
          Adding Dropout.
          """
-        self.dropout = nn.Dropout(self.dropout_rate)
+        self.dropout = nn.Dropout(self.args.dropout_rate)
 
     def _setup_layers(self):
         """
@@ -226,8 +234,10 @@ class Loss(nn.Module):
 
     def forward(self, predict_y, input_y):
         # Loss
-        # TODO
         f_loss = self.MSELoss(predict_y[0], input_y[0])
         b_loss = self.MSELoss(predict_y[1], input_y[1])
+
         losses = f_loss + b_loss
+        # value = (predict_y[0] - predict_y[1]) - (input_y[0] - input_y[1])
+        # losses = torch.mean(torch.pow(value, 2))
         return losses
