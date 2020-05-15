@@ -105,6 +105,16 @@ def parameter_parser():
                         default=1,
                         help="Number of RNN Layers. (default: 1)")
 
+    parser.add_argument("--skip-size",
+                        type=int,
+                        default=3,
+                        help="Skip window of Skip-RNN Layers. (default: 3)")
+
+    parser.add_argument("--skip-dim",
+                        type=int,
+                        default=5,
+                        help="Dimensionality for Skip-RNN Layers. (default: 5)")
+
     parser.add_argument("--fc-dim",
                         type=int,
                         default=512,

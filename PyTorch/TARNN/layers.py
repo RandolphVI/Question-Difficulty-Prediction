@@ -193,7 +193,7 @@ class TARNN(nn.Module):
         attention_oq_visual, attention_oq = self.att_oq(rnn_out_option, rnn_out_question)
 
         # Concat
-        # shape of att_out: [batch_size, lstm_hidden_size * 2 * 3]
+        # shape of att_out: [batch_size, rnn_hidden_size * 2 * 3]
         att_out = torch.cat((attention_cq, rnn_avg_question, attention_oq), dim=1)
 
         # Fully Connected Layer
