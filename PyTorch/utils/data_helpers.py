@@ -219,17 +219,18 @@ def data_word2vec(input_file, word2vec_model):
     if not input_file.endswith('.json'):
         raise IOError("[Error] The research data is not a json file. "
                       "Please preprocess the research data into the json file.")
+    Data = dict()
     with open(input_file) as fin:
-        f_id_list = []
-        b_id_list = []
-        f_content_index_list = []
-        b_content_index_list = []
-        f_question_index_list = []
-        b_question_index_list = []
-        f_option_index_list = []
-        b_option_index_list = []
-        f_labels_list = []
-        b_labels_list = []
+        Data['f_id'] = []
+        Data['b_id'] = []
+        Data['f_content_index'] = []
+        Data['b_content_index'] = []
+        Data['f_question_index'] = []
+        Data['b_question_index'] = []
+        Data['f_option_index'] = []
+        Data['b_option_index'] = []
+        Data['f_labels'] = []
+        Data['b_labels'] = []
 
         for eachline in fin:
             data = json.loads(eachline)
@@ -244,62 +245,18 @@ def data_word2vec(input_file, word2vec_model):
             f_labels = data['front_diff']
             b_labels = data['behind_diff']
 
-            f_id_list.append(f_id)
-            b_id_list.append(b_id)
-            f_content_index_list.append(_token_to_index(f_content_text))
-            b_content_index_list.append(_token_to_index(b_content_text))
-            f_question_index_list.append(_token_to_index(f_question_text))
-            b_question_index_list.append(_token_to_index(b_question_text))
-            f_option_index_list.append(_token_to_index(f_option_text))
-            b_option_index_list.append(_token_to_index(b_option_text))
-            f_labels_list.append(f_labels)
-            b_labels_list.append(b_labels)
+            Data['f_id'].append(f_id)
+            Data['b_id'].append(b_id)
+            Data['f_content_index'].append(_token_to_index(f_content_text))
+            Data['b_content_index'].append(_token_to_index(b_content_text))
+            Data['f_question_index'].append(_token_to_index(f_question_text))
+            Data['b_question_index'].append(_token_to_index(b_question_text))
+            Data['f_option_index'].append(_token_to_index(f_option_text))
+            Data['b_option_index'].append(_token_to_index(b_option_text))
+            Data['f_labels'].append(f_labels)
+            Data['b_labels'].append(b_labels)
 
-    class _Data:
-        def __init__(self):
-            pass
-
-        @property
-        def f_id(self):
-            return f_id_list
-
-        @property
-        def b_id(self):
-            return b_id_list
-
-        @property
-        def f_content_index(self):
-            return f_content_index_list
-
-        @property
-        def b_content_index(self):
-            return b_content_index_list
-
-        @property
-        def f_question_index(self):
-            return f_question_index_list
-
-        @property
-        def b_question_index(self):
-            return b_question_index_list
-
-        @property
-        def f_option_index(self):
-            return f_option_index_list
-
-        @property
-        def b_option_index(self):
-            return b_option_index_list
-
-        @property
-        def f_labels(self):
-            return f_labels_list
-
-        @property
-        def b_labels(self):
-            return b_labels_list
-
-    return _Data()
+    return Data
 
 
 def load_data_and_labels(data_file, word2vec_file):
@@ -389,38 +346,44 @@ def pad_sequence_with_maxlen(sequences, batch_first=False, padding_value=0, maxl
     return out_tensor
 
 
-def pad_data(data, pad_seq_len):
+class MyData(object):
     """
-    Version for PyTorch
-
-    Args:
-        data: The research data
-        pad_seq_len: The max sentence length of [content, question, option] text
-    Returns:
-        pad_content: The padded data
-        pad_question: The padded data
-        pad_option: The padded data
-        labels: The data labels
+    Define the IterableDataset structure
     """
-    f_pad_content = pad_sequence_with_maxlen([torch.tensor(item) for item in data.f_content_index],
-                                             batch_first=True, padding_value=0., maxlen_arg=pad_seq_len[0])
-    b_pad_content = pad_sequence_with_maxlen([torch.tensor(item) for item in data.b_content_index],
-                                             batch_first=True, padding_value=0., maxlen_arg=pad_seq_len[0])
-    f_pad_question = pad_sequence_with_maxlen([torch.tensor(item) for item in data.f_question_index],
-                                              batch_first=True, padding_value=0., maxlen_arg=pad_seq_len[1])
-    b_pad_question = pad_sequence_with_maxlen([torch.tensor(item) for item in data.b_question_index],
-                                              batch_first=True, padding_value=0., maxlen_arg=pad_seq_len[1])
-    f_pad_option = pad_sequence_with_maxlen([torch.tensor(item) for item in data.f_option_index],
-                                            batch_first=True, padding_value=0., maxlen_arg=pad_seq_len[2])
-    b_pad_option = pad_sequence_with_maxlen([torch.tensor(item) for item in data.b_option_index],
-                                            batch_first=True, padding_value=0., maxlen_arg=pad_seq_len[2])
-    f_labels = torch.tensor(data.f_labels)
-    b_labels = torch.tensor(data.b_labels)
+    def __init__(self, data: dict, pad_len: list, device):
+        self.f_content = pad_sequence_with_maxlen([torch.tensor(item) for item in data['f_content_index']],
+                                                  batch_first=True, padding_value=0., maxlen_arg=pad_len[0])
+        self.b_content = pad_sequence_with_maxlen([torch.tensor(item) for item in data['b_content_index']],
+                                                  batch_first=True, padding_value=0., maxlen_arg=pad_len[0])
+        self.f_question = pad_sequence_with_maxlen([torch.tensor(item) for item in data['f_question_index']],
+                                                   batch_first=True, padding_value=0., maxlen_arg=pad_len[1])
+        self.b_question = pad_sequence_with_maxlen([torch.tensor(item) for item in data['b_question_index']],
+                                                   batch_first=True, padding_value=0., maxlen_arg=pad_len[1])
+        self.f_option = pad_sequence_with_maxlen([torch.tensor(item) for item in data['f_option_index']],
+                                                 batch_first=True, padding_value=0., maxlen_arg=pad_len[2])
+        self.b_option = pad_sequence_with_maxlen([torch.tensor(item) for item in data['b_option_index']],
+                                                 batch_first=True, padding_value=0., maxlen_arg=pad_len[2])
+        self.f_labels = torch.tensor(data['f_labels'])
+        self.b_labels = torch.tensor(data['b_labels'])
 
-    fb_pad_content = (f_pad_content, b_pad_content)
-    fb_pad_question = (f_pad_question, b_pad_question)
-    fb_pad_option = (f_pad_option, b_pad_option)
-    fb_labels = (f_labels, b_labels)
+        self.f_clens = torch.LongTensor([len(x) for x in data['f_content_index']])
+        self.b_clens = torch.LongTensor([len(x) for x in data['b_content_index']])
+        self.f_qlens = torch.LongTensor([len(x) for x in data['f_question_index']])
+        self.b_qlens = torch.LongTensor([len(x) for x in data['b_question_index']])
+        self.f_olens = torch.LongTensor([len(x) for x in data['f_option_index']])
+        self.b_olens = torch.LongTensor([len(x) for x in data['b_option_index']])
 
-    return fb_pad_content, fb_pad_question, fb_pad_option, fb_labels
+        self.device = device
 
+    def __len__(self):
+        return len(self.f_content)
+
+    def __getitem__(self, idx):
+        fb_pad_content = (self.f_content[idx].to(self.device), self.b_content[idx].to(self.device))
+        fb_clens = (self.f_clens[idx].to(self.device),  self.b_clens[idx].to(self.device))
+        fb_pad_question = (self.f_question[idx].to(self.device), self.b_question[idx].to(self.device))
+        fb_qlens = (self.f_qlens[idx].to(self.device), self.b_qlens[idx].to(self.device))
+        fb_pad_option = (self.f_option[idx].to(self.device), self.b_option[idx].to(self.device))
+        fb_olens = (self.f_olens[idx].to(self.device), self.f_olens[idx].to(self.device))
+        fb_labels = (self.f_labels[idx].to(self.device), self.b_labels[idx].to(self.device))
+        return fb_pad_content, fb_pad_question, fb_pad_option, fb_clens, fb_qlens, fb_olens, fb_labels

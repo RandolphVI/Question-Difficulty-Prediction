@@ -25,34 +25,6 @@ logger = dh.logger_fn("ptlog", "logs/{0}-{1}.log".format('Train' if OPTION == 'T
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def create_input_data(record):
-    """
-    Creating features and targets with Torch tensors.
-    """
-    x_f_content, x_b_content, x_f_question, x_b_question, x_f_option, x_b_option, y_f, y_b = record
-    x_fb_content = (x_f_content.to(device), x_b_content.to(device))
-    x_fb_question = (x_f_question.to(device), x_b_question.to(device))
-    x_fb_option = (x_f_option.to(device), x_b_option.to(device))
-    y_fb = (y_f.to(device), y_b.to(device))
-    return x_fb_content, x_fb_question, x_fb_option, y_fb
-
-def weights_init(model):
-    for m in model.modules():
-        if isinstance(m, nn.Linear):
-            nn.init.xavier_normal_(m.weight.data)
-            nn.init.constant_(m.bias.data, 0.1)
-        elif isinstance(m, nn.Conv2d):
-            nn.init.kaiming_normal_(m.weight.data, mode='fan_out', nonlinearity='relu')
-
-
-def print_weight(model):
-    for m in model.modules():
-        if isinstance(m, nn.Linear):
-            print("weight", m.weight.data)
-            print("bias:", m.bias.data)
-            print("next...")
-
-
 def train():
     """Training TARNN model."""
     dh.tab_printer(args, logger)
@@ -64,17 +36,9 @@ def train():
     val_data = dh.load_data_and_labels(args.validation_file, args.word2vec_file)
 
     logger.info("Data padding...")
-    x_train_fb_content, x_train_fb_question, x_train_fb_option, y_train_fb = dh.pad_data(train_data, args.pad_seq_len)
-    x_val_fb_content, x_val_fb_question, x_val_fb_option, y_val_fb = dh.pad_data(val_data, args.pad_seq_len)
+    train_dataset = dh.MyData(train_data, args.pad_seq_len, device)
+    val_dataset = dh.MyData(val_data, args.pad_seq_len, device)
 
-    train_dataset = TensorDataset(x_train_fb_content[0], x_train_fb_content[1],
-                                  x_train_fb_question[0], x_train_fb_question[1],
-                                  x_train_fb_option[0], x_train_fb_option[1],
-                                  y_train_fb[0], y_train_fb[1])
-    val_dataset = TensorDataset(x_val_fb_content[0], x_val_fb_content[1],
-                                x_val_fb_question[0], x_val_fb_question[1],
-                                x_val_fb_option[0], x_val_fb_option[1],
-                                y_val_fb[0], y_val_fb[1])
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -84,9 +48,6 @@ def train():
     # Init network
     logger.info("Init nn...")
     net = TARNN(args, VOCAB_SIZE, EMBEDDING_SIZE, pretrained_word2vec_matrix).to(device)
-
-    # weights_init(model=net)
-    # print_weight(model=net)
 
     print("Model's state_dict:")
     for param_tensor in net.state_dict():
@@ -122,7 +83,9 @@ def train():
         eval_loss = 0.0
         true_labels, predicted_scores = [], []
         for batch in val_loader:
-            x_val_fb_content, x_val_fb_question, x_val_fb_option, y_val_fb = create_input_data(batch)
+            x_val_fb_content, x_val_fb_question, x_val_fb_option, \
+            x_val_fb_clens, x_val_fb_qlens, x_val_fb_olens, y_val_fb = batch
+
             logits, scores = net(x_val_fb_content, x_val_fb_question, x_val_fb_option)
             avg_batch_loss = criterion(scores, y_val_fb)
             eval_loss = eval_loss + avg_batch_loss.item()
@@ -151,10 +114,11 @@ def train():
         batches = trange(len(train_loader), desc="Batches", leave=True)
         for batch_cnt, batch in zip(batches, train_loader):
             net.train()
-            x_train_fb_content, x_train_fb_question, x_train_fb_option, y_train_fb = create_input_data(batch)
+            x_train_fb_content, x_train_fb_question, x_train_fb_option, \
+            x_train_fb_clens, x_train_fb_qlens, x_train_fb_olens, y_train_fb = batch
+
             optimizer.zero_grad()   # 如果不置零，Variable 的梯度在每次 backward 的时候都会累加
             logits, scores = net(x_train_fb_content, x_train_fb_question, x_train_fb_option)
-            # TODO
             avg_batch_loss = criterion(scores, y_train_fb)
             avg_batch_loss.backward()
             optimizer.step()    # Parameter updating
