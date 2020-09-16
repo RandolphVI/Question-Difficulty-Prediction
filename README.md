@@ -8,12 +8,14 @@ The main objective of the project is to predict the difficulty of each given que
 ## Requirements
 
 - Python 3.6
-- Tensorflow 1.14.0
-- PyTorch 1.4.0
+- PyTorch 1.6.0
+- Tensorflow 1.15.0
+- Tensorboard 1.15.0
 - XGBoost 1.0.2
-- Sklearn
-- Numpy
-- Gensim
+- Sklearn 0.19.1
+- Numpy 1.16.2
+- Gensim 3.5.0
+
 
 ## Introduction
 
