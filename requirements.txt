@@ -9,4 +9,5 @@ numpy==1.16.2
 Pillow==5.4.1
 python_gflags==3.1.2
 scikit_learn==0.19.1
+tqdm==4.49.0
 google-compute-engine==2.8.13

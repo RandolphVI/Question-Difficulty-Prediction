@@ -15,6 +15,7 @@ The main objective of the project is to predict the difficulty of each given que
 - Sklearn 0.19.1
 - Numpy 1.16.2
 - Gensim 3.5.0
+- Tqdm 4.49.0
 
 
 ## Introduction
