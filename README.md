@@ -11,7 +11,7 @@ The main objective of the project is to predict the difficulty of each given que
 - PyTorch 1.6.0
 - Tensorflow 1.15.0
 - Tensorboard 1.15.0
-- XGBoost 1.0.2
+- XGBoost 1.2.0
 - Sklearn 0.19.1
 - Numpy 1.16.2
 - Gensim 3.5.0
