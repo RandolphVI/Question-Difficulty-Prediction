@@ -105,9 +105,6 @@ target/
 *.pickle
 *.xls
 *.doc
-PARNN/
-quesnet/
-data/preprocess.py
 !/data
 !/data/Train_sample.json
 !/data/Validation_sample.json
@@ -130,8 +127,11 @@ logs/
 
 # Related Code
 temp.py
+data/preprocess.py
 TF/utils/pairwise_data_helpers.py
 TF/TACNN
+TF/PARNN
+PyTorch/Quesnet/
 PyTorch/Others
 english_difficulty_prediction_dtr
 english_difficulty_prediction_tf
